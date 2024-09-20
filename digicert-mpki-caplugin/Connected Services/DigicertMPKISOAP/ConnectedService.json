@@ -1,0 +1,50 @@
+{
+  "ExtendedData": {
+    "inputs": [
+      "../../../../../../Documents/Digitcert mPKI/CertificateManagementService.wsdl"
+    ],
+    "collectionTypes": [
+      "System.Array",
+      "System.Collections.Generic.Dictionary`2"
+    ],
+    "enableDataBinding": true,
+    "messageContract": true,
+    "namespaceMappings": [
+      "*, DigicertMpkiSoap"
+    ],
+    "references": [
+      "BouncyCastle.Cryptography, {BouncyCastle.Cryptography, 2.0.0}",
+      "Keyfactor.AnyGateway.IAnyCAPlugin, {Keyfactor.AnyGateway.IAnyCAPlugin, 2.0.0}",
+      "Keyfactor.Common, {Keyfactor.Common, 2.5.0}",
+      "Keyfactor.Logging, {Keyfactor.Logging, 1.1.1}",
+      "Keyfactor.PKI, {Keyfactor.PKI, 5.5.0}",
+      "Microsoft.Extensions.Configuration, {Microsoft.Extensions.Configuration, 5.0.0}",
+      "Microsoft.Extensions.Configuration.Abstractions, {Microsoft.Extensions.Configuration.Abstractions, 5.0.0}",
+      "Microsoft.Extensions.Configuration.Binder, {Microsoft.Extensions.Configuration.Binder, 5.0.0}",
+      "Microsoft.Extensions.Configuration.FileExtensions, {Microsoft.Extensions.Configuration.FileExtensions, 5.0.0}",
+      "Microsoft.Extensions.Configuration.Json, {Microsoft.Extensions.Configuration.Json, 5.0.0}",
+      "Microsoft.Extensions.FileProviders.Abstractions, {Microsoft.Extensions.FileProviders.Abstractions, 5.0.0}",
+      "Microsoft.Extensions.FileProviders.Physical, {Microsoft.Extensions.FileProviders.Physical, 5.0.0}",
+      "Microsoft.Extensions.FileSystemGlobbing, {Microsoft.Extensions.FileSystemGlobbing, 5.0.0}",
+      "Microsoft.Extensions.Logging.Abstractions, {Microsoft.Extensions.Logging.Abstractions, 5.0.0}",
+      "Microsoft.Extensions.Primitives, {Microsoft.Extensions.Primitives, 5.0.0}",
+      "Microsoft.Win32.Registry, {Microsoft.Win32.Registry, 5.0.0}",
+      "Newtonsoft.Json, {Newtonsoft.Json, 13.0.3}",
+      "System.ComponentModel.Annotations, {System.ComponentModel.Annotations, 5.0.0}",
+      "System.DirectoryServices, {System.DirectoryServices, 5.0.0}",
+      "System.Drawing.Common, {System.Drawing.Common, 5.0.0}",
+      "System.IO.FileSystem.AccessControl, {System.IO.FileSystem.AccessControl, 5.0.0}",
+      "System.Runtime.Caching, {System.Runtime.Caching, 5.0.0}",
+      "System.Security.AccessControl, {System.Security.AccessControl, 5.0.0}",
+      "System.Security.Cryptography.Cng, {System.Security.Cryptography.Cng, 5.0.0}",
+      "System.Security.Cryptography.Pkcs, {System.Security.Cryptography.Pkcs, 5.0.1}",
+      "System.Security.Cryptography.ProtectedData, {System.Security.Cryptography.ProtectedData, 5.0.0}",
+      "System.Security.Permissions, {System.Security.Permissions, 5.0.0}",
+      "System.Security.Principal.Windows, {System.Security.Principal.Windows, 5.0.0}",
+      "System.Windows.Extensions, {System.Windows.Extensions, 5.0.0}"
+    ],
+    "sync": true,
+    "targetFramework": "net6.0",
+    "typeReuseMode": "All"
+  }
+}

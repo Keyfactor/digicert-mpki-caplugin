@@ -1,0 +1,10 @@
+{
+  "extensions": {
+    "Keyfactor.AnyGateway.Extensions.IAnyCAPlugin": {
+      "DigicertMpkiCAPlugin": {
+        "assemblypath": "DigicertMpkiCAPlugin.dll",
+        "TypeFullName": "Keyfactor.Extensions.CAPlugin.DigicertMpki.DigicertMpkiCAPlugin"
+      }
+    }
+  }
+}
