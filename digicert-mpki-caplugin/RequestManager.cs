@@ -220,7 +220,8 @@ namespace Keyfactor.AnyGateway.DigiCertSym
                 _logger.LogDebug("Entering GetSearchCertificatesRequest(int pageCounter, string templateId) Method...");
                 _logger.LogDebug("Exiting GetSearchCertificatesRequest(int pageCounter, string templateId) Method...");
                 _logger.LogTrace($"pageCounter: {pageCounter} TemplateId: {templateId}");
-                var request = new searchCertificateRequest();
+                var requestType = new SearchCertificateRequestType();
+                var request = new searchCertificateRequest(requestType);
                 request.searchCertificateRequest1.profileOID = templateId;
                 request.searchCertificateRequest1.startIndex = pageCounter;
                 request.searchCertificateRequest1.startIndexSpecified = true;

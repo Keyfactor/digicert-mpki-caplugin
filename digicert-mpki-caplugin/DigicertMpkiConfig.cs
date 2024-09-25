@@ -8,9 +8,9 @@
 
 		}
 		public string ApiKey { get; set; }
-		public string BaseUrl { get; set; }
-		public string ClientCertificateLocation {  get; set; }
-        public string ClientCertificatePassword { get; set; }
+		public string DigiCertSymUrl { get; set; }
+		public string ClientCertLocation {  get; set; }
+        public string ClientCertPassword { get; set; }
         public string EndPointAddress { get; set; }
     }
 }

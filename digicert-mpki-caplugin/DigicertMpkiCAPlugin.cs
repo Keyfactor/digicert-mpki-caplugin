@@ -42,16 +42,16 @@ namespace Keyfactor.Extensions.CAPlugin.DigicertMpki
             _config = JsonConvert.DeserializeObject<DigicertMpkiConfig>(rawConfig);
 
             _logger.MethodEntry();
-            
-            _requestManager = new RequestManager(_logger)
-            {
 
-                DnsConstantName = configProvider.CAConnectionData["DnsConstantName"].ToString(),
-                UpnConstantName = configProvider.CAConnectionData["UpnConstantName"].ToString(),
-                IpConstantName = configProvider.CAConnectionData["IpConstantName"].ToString(),
-                EmailConstantName = configProvider.CAConnectionData["EmailConstantName"].ToString(),
-                OuStartPoint = int.Parse(configProvider.CAConnectionData["OuStartPoint"].ToString())
-            };
+            _requestManager = new RequestManager(_logger);
+            //{
+
+            //    DnsConstantName = configProvider.CAConnectionData["DnsConstantName"].ToString(),
+            //    UpnConstantName = configProvider.CAConnectionData["UpnConstantName"].ToString(),
+            //    IpConstantName = configProvider.CAConnectionData["IpConstantName"].ToString(),
+            //    EmailConstantName = configProvider.CAConnectionData["EmailConstantName"].ToString(),
+            //    OuStartPoint = int.Parse(configProvider.CAConnectionData["OuStartPoint"].ToString())
+            //};
             
             _client = new DigiCertSymClient(_config,_logger);
             //Templates = config.Config.Templates;
@@ -348,13 +348,13 @@ namespace Keyfactor.Extensions.CAPlugin.DigicertMpki
             }
 
             _logger.LogTrace("Checking the Client Certificate Location.");
-            string clientCertLocation = connectionInfo.ContainsKey(Constants.ClientCertificateLocation) ? (string)connectionInfo[Constants.ClientCertificateLocation] : string.Empty;
+            string clientCertLocation = connectionInfo.ContainsKey(Constants.ClientCertLocation) ? (string)connectionInfo[Constants.ClientCertLocation] : string.Empty;
             if (string.IsNullOrWhiteSpace(clientCertLocation))
             {
                 errors.Add("The Client Certificate Location Is a required value.");
             }
             _logger.LogTrace("Checking the Client Certificate Password.");
-            string clientCertPassword = connectionInfo.ContainsKey(Constants.ClientCertificatePassword) ? (string)connectionInfo[Constants.ClientCertificatePassword] : string.Empty;
+            string clientCertPassword = connectionInfo.ContainsKey(Constants.ClientCertPassword) ? (string)connectionInfo[Constants.ClientCertPassword] : string.Empty;
             if (string.IsNullOrWhiteSpace(clientCertPassword))
             {
                 errors.Add("The Client Certificate Password Is a required value.");
@@ -397,14 +397,14 @@ namespace Keyfactor.Extensions.CAPlugin.DigicertMpki
                     DefaultValue = "",
                     Type = "String"
                 },
-                [Constants.ClientCertificateLocation] = new PropertyConfigInfo()
+                [Constants.ClientCertLocation] = new PropertyConfigInfo()
                 {
                     Comments = "Location on the Gateway Server File System of Client Certificate sample: C:\\temp\\myclientcert.pfx",
                     Hidden = false,
                     DefaultValue = "",
                     Type = "String"
                 },
-                [Constants.ClientCertificatePassword] = new PropertyConfigInfo()
+                [Constants.ClientCertPassword] = new PropertyConfigInfo()
                 {
                     Comments = "Password for the SOAP Client Certificate.",
                     Hidden = true,
@@ -414,7 +414,7 @@ namespace Keyfactor.Extensions.CAPlugin.DigicertMpki
                 [Constants.EndpointAddress] = new PropertyConfigInfo()
                 {
                     Comments = "Endpoint address for SOAP Service sample: https://someurl/pki-ws/certificateManagementService.",
-                    Hidden = true,
+                    Hidden = false,
                     DefaultValue = "",
                     Type = "String"
                 }

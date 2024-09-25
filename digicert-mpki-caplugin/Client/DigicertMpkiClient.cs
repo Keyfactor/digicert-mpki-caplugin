@@ -34,10 +34,11 @@ namespace Keyfactor.Extensions.CAPlugin.DigicertMpki.Client
         {
             try
             {
-                BaseUrl=new Uri(config.BaseUrl);
+                _logger = logger;
+                BaseUrl =new Uri(config.DigiCertSymUrl);
                 ApiKey=config.ApiKey;
-                ClientCertificateLocation=config.ClientCertificateLocation;
-                ClientCertificatePassword =config.ClientCertificatePassword;
+                ClientCertificateLocation=config.ClientCertLocation;
+                ClientCertificatePassword =config.ClientCertPassword;
                 EndPointAddress = config.EndPointAddress;
                 RestClient = ConfigureRestClient();
             }

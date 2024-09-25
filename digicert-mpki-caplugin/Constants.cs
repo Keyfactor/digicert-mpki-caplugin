@@ -6,7 +6,7 @@
         public static string DigiCertSymApiKey = "ApiKey";
         public static int DefaultPageSize = 100;
         public static string EndpointAddress = "EndpointAddress";
-        public static string ClientCertificateLocation = "ClientCertificateLocation";
-        public static string ClientCertificatePassword = "ClientCertificatePassword";
+        public static string ClientCertLocation = "ClientCertLocation";
+        public static string ClientCertPassword = "ClientCertPassword";
     }
 }
