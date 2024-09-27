@@ -23,6 +23,8 @@ using Keyfactor.AnyGateway.Extensions;
 using Keyfactor.PKI;
 using Microsoft.Extensions.Logging;
 using DigicertMpkiSoap;
+using Keyfactor.Extensions.CAPlugin.DigicertMpki;
+using Keyfactor.PKI.Enums.EJBCA;
 
 namespace Keyfactor.AnyGateway.DigiCertSym
 {
@@ -37,17 +39,17 @@ namespace Keyfactor.AnyGateway.DigiCertSym
             CessationOfOperation = 5
         }
 
-        public string DnsConstantName { get; set; }
-        public string UpnConstantName { get; set; }
-        public string IpConstantName { get; set; }
-        public string EmailConstantName { get; set; }
-        public int OuStartPoint { get; set; }
         private readonly ILogger _logger;
+        private readonly DigicertMpkiConfig _config;
+
         public static Func<string, string> Pemify = ss =>
             ss.Length <= 64 ? ss : ss.Substring(0, 64) + "\n" + Pemify(ss.Substring(64));
 
-        public RequestManager(ILogger logger)
-        {  _logger = logger; }
+        public RequestManager(ILogger logger, DigicertMpkiConfig config)
+        {  
+            _logger = logger;
+            _config = config;
+        }
 
 
         public int MapReturnStatus(string digiCertStatus)
@@ -279,17 +281,15 @@ namespace Keyfactor.AnyGateway.DigiCertSym
         }
 
         public EnrollmentRequest GetEnrollmentRequest(EnrollmentProductInfo productInfo, string csr,
-            Dictionary<string, string[]> san)
+            Dictionary<string, string[]> san, Dictionary<string, string> productList)
         {
             try
             {
                 _logger.LogDebug("Entering GetEnrollmentRequest(EnrollmentProductInfo productInfo, string csr,Dictionary<string, string[]> san) Method...");
                 _logger.LogTrace($"csr: {csr}");
-                var pemCert = Pemify(csr);
+                var pemCert = csr;
                 _logger.LogTrace($"pemCert Intermediate: {pemCert}");
-                pemCert = "-----BEGIN CERTIFICATE REQUEST-----\n" + pemCert;
-                pemCert += "\n-----END CERTIFICATE REQUEST-----";
-                _logger.LogTrace($"pemCertFinal: {pemCert}");
+               _logger.LogTrace($"pemCertFinal: {pemCert}");
 
                 var sn = new San();
                 CertificationRequestInfo csrParsed;
@@ -303,14 +303,15 @@ namespace Keyfactor.AnyGateway.DigiCertSym
                 _logger.LogTrace($"Parsed CSR Subject Value Is: {csrParsed?.Subject.ToString().Split(',')}");
 
                 _logger.LogTrace("Getting File Execution Location to retrieve path");
-                string codeBase = Assembly.GetExecutingAssembly().CodeBase;
+                string codeBase = Assembly.GetExecutingAssembly().Location;
                 UriBuilder uri = new UriBuilder(codeBase);
                 string path = Uri.UnescapeDataString(uri.Path);
                 path = Path.GetDirectoryName(path) + "\\";
                 _logger.LogTrace($"Executing path for the file is: {path}");
 
-                _logger.LogTrace($"Reading in JSON template to parse file {productInfo.ProductParameters["EnrollmentTemplate"]}");
-                JObject jsonTemplate = JObject.Parse(File.ReadAllText(path + productInfo.ProductParameters["EnrollmentTemplate"]));
+
+                _logger.LogTrace($"Reading in JSON template to parse file {productInfo.ProductID}");
+                JObject jsonTemplate = JObject.Parse(File.ReadAllText(path + GetFileNameByProductId(productList,productInfo.ProductID)));
                 var jsonResult = jsonTemplate.ToString();
                 _logger.LogTrace($"Read in JSON, resulting template: {jsonResult}");
 
@@ -354,9 +355,9 @@ namespace Keyfactor.AnyGateway.DigiCertSym
                 List<DnsName> dnsList = new List<DnsName>();
 
                 //5. If it contains the dns and it is not multi domain get the DNS
-                if (san.ContainsKey("dns"))
+                if (san.ContainsKey("dnsname"))
                 {
-                    var dnsKp = san["dns"];
+                    var dnsKp = san["dnsname"];
                     _logger.LogTrace($"dnsKP: {dnsKp}");
 
                     (Dictionary<string, string> DNSOut, Dictionary<string, string> MultiOut) result;
@@ -371,7 +372,7 @@ namespace Keyfactor.AnyGateway.DigiCertSym
                         result = ProcessSansArray(dnsKp, enrollmentRequest?.Attributes?.CommonName);
                     }
 
-                    DnsName up = new DnsName { Id = DnsConstantName, Value = result.DNSOut.FirstOrDefault().Value };
+                    DnsName up = new DnsName { Id = _config.DnsConstName, Value = result.DNSOut.FirstOrDefault().Value };
 
                     MultiOut = result.MultiOut;
                     var jsonResultDns = JsonConvert.SerializeObject(enrollmentRequest);
@@ -401,7 +402,7 @@ namespace Keyfactor.AnyGateway.DigiCertSym
                     _logger.LogTrace($"upn: {upKp}");
 
                     //Multiple UPNs not supported by Digicert so take the first one in the list
-                    UserPrincipalName up = new UserPrincipalName { Id = UpnConstantName, Value = upKp.FirstOrDefault() };
+                    UserPrincipalName up = new UserPrincipalName { Id = _config.UpnConstName, Value = upKp.FirstOrDefault() };
                     upList.Add(up);
                     sn.UserPrincipalName = upList;
                 }
@@ -415,7 +416,7 @@ namespace Keyfactor.AnyGateway.DigiCertSym
                     _logger.LogTrace($"ip: {ipKp}");
 
                     //Multiple IP Addresses not supported by Digicert so take the first one in the list
-                    IpAddress ip = new IpAddress { Id = IpConstantName, Value = ipKp.FirstOrDefault() };
+                    IpAddress ip = new IpAddress { Id = _config.IpConstName, Value = ipKp.FirstOrDefault() };
                     ipList.Add(ip);
                     sn.IpAddress = ipList;
                 }
@@ -429,7 +430,7 @@ namespace Keyfactor.AnyGateway.DigiCertSym
                     _logger.LogTrace($"mail: {mailKp}");
 
                     //Multiple IP Addresses not supported by Digicert so take the first one in the list
-                    Rfc822Name mail = new Rfc822Name { Id = EmailConstantName, Value = mailKp.FirstOrDefault() };
+                    Rfc822Name mail = new Rfc822Name { Id = _config.EmailConstName, Value = mailKp.FirstOrDefault() };
                     mailList.Add(mail);
                     sn.Rfc822Name = mailList;
                 }
@@ -439,11 +440,11 @@ namespace Keyfactor.AnyGateway.DigiCertSym
                 _logger.LogTrace($"Raw Organizational Units: {organizationUnitsRaw}");
                 var organizationalUnits = organizationUnitsRaw.Split('/');
                 var orgUnits = new List<OrganizationUnit>();
-                _logger.LogTrace($"OuStartPoint is {OuStartPoint}");
-                var i = OuStartPoint;
+                _logger.LogTrace($"OuStartPoint is {_config.OuStartPoint}");
+                var i = _config.OuStartPoint;
                 foreach (var ou in organizationalUnits)
                 {
-                    var organizationUnit = new OrganizationUnit { Id = OuStartPoint == 0 ? "cert_org_unit" : "cert_org_unit" + i, Value = ou };
+                    var organizationUnit = new OrganizationUnit { Id = _config.OuStartPoint == 0 ? "cert_org_unit" : "cert_org_unit" + i, Value = ou };
                     orgUnits.Add(organizationUnit);
                     i++;
                 }
@@ -474,13 +475,13 @@ namespace Keyfactor.AnyGateway.DigiCertSym
                 if (enrollmentResponse.RegistrationError != null)
                     return new EnrollmentResult
                     {
-                        Status = (int)PKIConstants.Microsoft.RequestDisposition.FAILED, //failure
+                        Status = (int)EndEntityStatus.FAILED, //failure
                         StatusMessage = "Error occurred when enrolling"
                     };
 
                 return new EnrollmentResult
                 {
-                    Status = (int)PKIConstants.Microsoft.RequestDisposition.ISSUED, //success
+                    Status = (int)EndEntityStatus.GENERATED, //success
                     CARequestID = enrollmentResponse?.Result?.SerialNumber,
                     Certificate = cert?.Certificate,
                     StatusMessage =
@@ -573,6 +574,18 @@ namespace Keyfactor.AnyGateway.DigiCertSym
                 _logger.LogError($"Error in ReplaceProductParam(KeyValuePair<string, string> productParam, string jsonResult) Method: {e.Message}");
                 throw;
             }
+        }
+
+        public static string GetFileNameByProductId(Dictionary<string, string> fileDict, string productId)
+        {
+            foreach (var kvp in fileDict)
+            {
+                if (kvp.Value == productId)
+                {
+                    return Path.GetFileName(kvp.Key);
+                }
+            }
+            return null; // Return null if no matching productId is found
         }
 
         private string ReplaceCsrEntry(string[] nameValuePair, string jsonResult)

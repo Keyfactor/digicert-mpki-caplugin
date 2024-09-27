@@ -43,15 +43,10 @@ namespace Keyfactor.Extensions.CAPlugin.DigicertMpki
 
             _logger.MethodEntry();
 
-            _requestManager = new RequestManager(_logger);
-            //{
+            var connectors=GetCAConnectorAnnotations();
 
-            //    DnsConstantName = configProvider.CAConnectionData["DnsConstantName"].ToString(),
-            //    UpnConstantName = configProvider.CAConnectionData["UpnConstantName"].ToString(),
-            //    IpConstantName = configProvider.CAConnectionData["IpConstantName"].ToString(),
-            //    EmailConstantName = configProvider.CAConnectionData["EmailConstantName"].ToString(),
-            //    OuStartPoint = int.Parse(configProvider.CAConnectionData["OuStartPoint"].ToString())
-            //};
+
+            _requestManager = new RequestManager(_logger,_config);
             
             _client = new DigiCertSymClient(_config,_logger);
             //Templates = config.Config.Templates;
@@ -230,13 +225,14 @@ namespace Keyfactor.Extensions.CAPlugin.DigicertMpki
 
             try
             {
+                var productList = GetProductList();
                 switch (enrollmentType)
                 {
                     case EnrollmentType.New:
                         _logger.LogTrace("Entering New Enrollment");
                         //If they renewed an expired cert it gets here and this will not be supported
 
-                        enrollmentRequest = _requestManager.GetEnrollmentRequest(productInfo, csr, san);
+                        enrollmentRequest = _requestManager.GetEnrollmentRequest(productInfo, csr, san, productList);
                         _logger.LogTrace($"Enrollment Request JSON: {JsonConvert.SerializeObject(enrollmentRequest)}");
                         var enrollmentResponse =
                             Task.Run(async () => await _client.SubmitEnrollmentAsync(enrollmentRequest))
@@ -266,7 +262,7 @@ namespace Keyfactor.Extensions.CAPlugin.DigicertMpki
                         {
                             var priorCertSn = productInfo.ProductParameters["PriorCertSN"];
                             _logger.LogTrace($"Renew Serial Number: {priorCertSn}");
-                            renewRequest = _requestManager.GetEnrollmentRequest(productInfo, csr, san);
+                            renewRequest = _requestManager.GetEnrollmentRequest(productInfo, csr, san, productList);
 
                             _logger.LogTrace($"Renewal Request JSON: {JsonConvert.SerializeObject(renewRequest)}");
                             var renewResponse = Task.Run(async () =>
@@ -360,6 +356,12 @@ namespace Keyfactor.Extensions.CAPlugin.DigicertMpki
                 errors.Add("The Client Certificate Password Is a required value.");
             }
 
+            _logger.LogTrace("Checking the DNS Constant Name.");
+            string DnsConstantName = connectionInfo.ContainsKey(Constants.DnsConstName) ? (string)connectionInfo[Constants.DnsConstName] : string.Empty;
+            if (string.IsNullOrWhiteSpace(clientCertPassword))
+            {
+                errors.Add("The DNS Constant Name is a required value.");
+            }
 
             if (errors.Any())
             {
@@ -417,6 +419,41 @@ namespace Keyfactor.Extensions.CAPlugin.DigicertMpki
                     Hidden = false,
                     DefaultValue = "",
                     Type = "String"
+                },
+                [Constants.DnsConstName] = new PropertyConfigInfo()
+                {
+                    Comments = "Name of the constant DNS Name that digicert expects in the API.",
+                    Hidden = false,
+                    DefaultValue = "dnsName",
+                    Type = "String"
+                },
+                [Constants.UpnConstName] = new PropertyConfigInfo()
+                {
+                    Comments = "Name of the constant Upn name that digicert expects in the API.",
+                    Hidden = false,
+                    DefaultValue = "otherNameUPN",
+                    Type = "String"
+                },
+                [Constants.IpConstName] = new PropertyConfigInfo()
+                {
+                    Comments = "Name of the constant Ip San Name that digicert expects in the API.",
+                    Hidden = false,
+                    DefaultValue = "san_ipAddress",
+                    Type = "String"
+                },
+                [Constants.EmailConstName] = new PropertyConfigInfo()
+                {
+                    Comments = "Name of the constant Email Name that digicert expects in the API.",
+                    Hidden = false,
+                    DefaultValue = "mail_email",
+                    Type = "String"
+                },
+                [Constants.OuStartPoint] = new PropertyConfigInfo()
+                {
+                    Comments = "Value of the OuStartPoint Name that digicert expects in the API.",
+                    Hidden = false,
+                    DefaultValue = 0,
+                    Type = "Number"
                 }
 
             };
@@ -424,12 +461,46 @@ namespace Keyfactor.Extensions.CAPlugin.DigicertMpki
 
         public Dictionary<string, PropertyConfigInfo> GetTemplateParameterAnnotations()
         {
-            return new Dictionary<string, PropertyConfigInfo>()
+            var templateParams = new Dictionary<string, PropertyConfigInfo>();
+
+            _logger.LogTrace("Getting File Execution Location to retrieve path");
+            string codeBase = Assembly.GetExecutingAssembly().Location;
+            UriBuilder uri = new UriBuilder(codeBase);
+            string path = Uri.UnescapeDataString(uri.Path);
+            path = Path.GetDirectoryName(path) + "\\";
+            _logger.LogTrace($"Executing path for the file is: {path}");
+
+            var paramList = DigiCertSymClient.ExtractEnrollmentParamsFromJson(path);
+
+
+            foreach(var param in paramList)
             {
+                var propConfig=GeneratePropertyConfig(param);
+                templateParams.Add(param.Key, propConfig);
+            }
+
+            return templateParams;
+        }
+
+        private PropertyConfigInfo GeneratePropertyConfig(KeyValuePair<string, string> param)
+        {
+            return new PropertyConfigInfo()
+            {
+                Comments = "",
+                Hidden = false,
+                DefaultValue = "",
+                Type = param.Value,
             };
+
         }
 
         public List<string> GetProductIds()
+        {
+            var productIds = GetProductList();
+            return productIds.Values.ToList();
+        }
+
+        private Dictionary<string, string> GetProductList()
         {
             _logger.LogTrace("Getting File Execution Location to retrieve path");
             string codeBase = Assembly.GetExecutingAssembly().Location;
@@ -438,12 +509,12 @@ namespace Keyfactor.Extensions.CAPlugin.DigicertMpki
             path = Path.GetDirectoryName(path) + "\\";
             _logger.LogTrace($"Executing path for the file is: {path}");
 
-            var productIds=DigiCertSymClient.ExtractProfileIdsFromJson(path);
-            productIds.Values.ToList();
+            var productIds = DigiCertSymClient.ExtractProfileIdsFromJson(path);
 
+            return productIds;
 
-            return productIds.Values.ToList();
         }
+
 
         Task<AnyCAPluginCertificate> IAnyCAPlugin.GetSingleRecord(string caRequestID)
         {
