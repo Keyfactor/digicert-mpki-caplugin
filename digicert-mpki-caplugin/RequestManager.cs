@@ -58,22 +58,22 @@ namespace Keyfactor.AnyGateway.DigiCertSym
             {
                 _logger.LogDebug("Entering MapReturnStatus(string digiCertStatus) Method...");
                 _logger.LogTrace($"digiCertStatus is {digiCertStatus}");
-                PKIConstants.Microsoft.RequestDisposition returnStatus;
+                 int returnStatus;
 
                 switch (digiCertStatus)
                 {
                     case "VALID":
-                        returnStatus = PKIConstants.Microsoft.RequestDisposition.ISSUED;
+                        returnStatus = (int)EndEntityStatus.GENERATED;
                         break;
                     case "Initial":
                     case "PENDING":
-                        returnStatus = PKIConstants.Microsoft.RequestDisposition.PENDING;
+                        returnStatus = (int)EndEntityStatus.INPROCESS;
                         break;
                     case "REVOKED":
-                        returnStatus = PKIConstants.Microsoft.RequestDisposition.REVOKED;
+                        returnStatus = (int)EndEntityStatus.REVOKED;
                         break;
                     default:
-                        returnStatus = PKIConstants.Microsoft.RequestDisposition.UNKNOWN;
+                        returnStatus = (int)EndEntityStatus.FAILED;
                         break;
                 }
                 _logger.LogTrace($"returnStatus is {returnStatus}");
@@ -93,24 +93,24 @@ namespace Keyfactor.AnyGateway.DigiCertSym
             {
                 _logger.LogDebug("Entering MapReturnStatus(string digiCertStatus) Method...");
                 _logger.LogTrace($"digiCertStatus is {digiCertStatus}");
-                PKIConstants.Microsoft.RequestDisposition returnStatus;
+                int returnStatus;
 
                 switch (digiCertStatus)
                 {
                     case CertificateStatusEnum.VALID:
-                        returnStatus = PKIConstants.Microsoft.RequestDisposition.ISSUED;
+                        returnStatus = (int)EndEntityStatus.GENERATED;
                         break;
                     case CertificateStatusEnum.EXPIRED:
-                        returnStatus = PKIConstants.Microsoft.RequestDisposition.ISSUED;
+                        returnStatus = (int)EndEntityStatus.GENERATED;
                         break;
                     case CertificateStatusEnum.SUSPENDED:
-                        returnStatus = PKIConstants.Microsoft.RequestDisposition.REVOKED;
+                        returnStatus = (int)EndEntityStatus.REVOKED;
                         break;
                     case CertificateStatusEnum.REVOKED:
-                        returnStatus = PKIConstants.Microsoft.RequestDisposition.REVOKED;
+                        returnStatus = (int)EndEntityStatus.REVOKED;
                         break;
                     default:
-                        returnStatus = PKIConstants.Microsoft.RequestDisposition.UNKNOWN;
+                        returnStatus = (int)EndEntityStatus.FAILED;
                         break;
                 }
                 _logger.LogTrace($"returnStatus is {returnStatus}");
@@ -520,7 +520,7 @@ namespace Keyfactor.AnyGateway.DigiCertSym
                 if (renewResponse.RegistrationError != null)
                     return new EnrollmentResult
                     {
-                        Status = (int)PKIConstants.Microsoft.RequestDisposition.FAILED, //failure
+                        Status = (int)EndEntityStatus.FAILED, //failure
                         StatusMessage = "Error occurred when enrolling"
                     };
 

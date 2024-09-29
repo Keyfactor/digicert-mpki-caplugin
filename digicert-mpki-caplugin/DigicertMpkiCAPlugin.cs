@@ -4,6 +4,7 @@ using Keyfactor.AnyGateway.Extensions;
 using Keyfactor.Extensions.CAPlugin.DigicertMpki.Client;
 using Keyfactor.Logging;
 using Keyfactor.PKI;
+using Keyfactor.PKI.Enums.EJBCA;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
 using System;
@@ -43,14 +44,14 @@ namespace Keyfactor.Extensions.CAPlugin.DigicertMpki
 
             _logger.MethodEntry();
 
-            var connectors=GetCAConnectorAnnotations();
+            var connectors = GetCAConnectorAnnotations();
 
 
-            _requestManager = new RequestManager(_logger,_config);
-            
-            _client = new DigiCertSymClient(_config,_logger);
+            _requestManager = new RequestManager(_logger, _config);
+
+            _client = new DigiCertSymClient(_config, _logger);
             //Templates = config.Config.Templates;
-            
+
             _logger.MethodExit();
         }
 
@@ -147,7 +148,7 @@ namespace Keyfactor.Extensions.CAPlugin.DigicertMpki
                                                 {
                                                     CARequestID =
                                                         $"{currentResponseItem.serialNumber}",
-                                                    Certificate = base64Cert,                                                   
+                                                    Certificate = base64Cert,
                                                     Status = certStatus,
                                                     ProductID = $"{currentResponseItem.profileOID}",
                                                     RevocationReason =
@@ -241,7 +242,7 @@ namespace Keyfactor.Extensions.CAPlugin.DigicertMpki
                         if (enrollmentResponse?.Result == null)
                             return new EnrollmentResult
                             {
-                                Status = (int)PKIConstants.Microsoft.RequestDisposition.FAILED, //failure
+                                Status = (int)EndEntityStatus.FAILED, //failure
                                 StatusMessage =
                                     $"Enrollment Failed: {_requestManager.FlattenErrors(enrollmentResponse?.RegistrationError.Errors)}"
                             };
@@ -254,41 +255,31 @@ namespace Keyfactor.Extensions.CAPlugin.DigicertMpki
                         var cert = GetSingleRecord(enrollmentResponse.Result.SerialNumber);
                         return _requestManager.GetEnrollmentResult(enrollmentResponse, cert.Result);
                     case EnrollmentType.Renew:
-                    case EnrollmentType.Reissue:
+                    case EnrollmentType.RenewOrReissue:
                         _logger.LogTrace("Entering Renew Enrollment");
                         _logger.LogTrace("Checking To Make sure it is not one click renew (not supported)");
                         //KeyFactor needs a better way to detect one click renewals, some flag or something
-                        if (productInfo.ProductParameters.Count > 7)
-                        {
-                            var priorCertSn = productInfo.ProductParameters["PriorCertSN"];
-                            _logger.LogTrace($"Renew Serial Number: {priorCertSn}");
-                            renewRequest = _requestManager.GetEnrollmentRequest(productInfo, csr, san, productList);
 
-                            _logger.LogTrace($"Renewal Request JSON: {JsonConvert.SerializeObject(renewRequest)}");
-                            var renewResponse = Task.Run(async () =>
-                                    await _client.SubmitRenewalAsync(priorCertSn, renewRequest))
-                                .Result;
-                            if (renewResponse?.Result == null)
-                                return new EnrollmentResult
-                                {
-                                    Status = (int)PKIConstants.Microsoft.RequestDisposition.FAILED, //failure
-                                    StatusMessage =
-                                        $"Enrollment Failed {_requestManager.FlattenErrors(renewResponse?.RegistrationError.Errors)}"
-                                };
+                        var priorCertSn = productInfo.ProductParameters["PriorCertSN"];
+                        _logger.LogTrace($"Renew Serial Number: {priorCertSn}");
+                        renewRequest = _requestManager.GetEnrollmentRequest(productInfo, csr, san, productList);
 
-                            _logger.MethodExit();
-                            var renCert = GetSingleRecord(renewResponse.Result.SerialNumber);
-                            return _requestManager.GetRenewResponse(renewResponse, renCert.Result);
-                        }
-                        else
-                        {
+                        _logger.LogTrace($"Renewal Request JSON: {JsonConvert.SerializeObject(renewRequest)}");
+                        var renewResponse = Task.Run(async () =>
+                                await _client.SubmitRenewalAsync(priorCertSn, renewRequest))
+                            .Result;
+                        if (renewResponse?.Result == null)
                             return new EnrollmentResult
                             {
-                                Status = (int)PKIConstants.Microsoft.RequestDisposition.FAILED,
+                                Status = (int)EndEntityStatus.FAILED, //failure
                                 StatusMessage =
-                                "One Click Renew is not available for this integration.  Need to specify validity and seat enrollment params."
+                                    $"Enrollment Failed {_requestManager.FlattenErrors(renewResponse?.RegistrationError.Errors)}"
                             };
-                        }
+
+                        _logger.MethodExit();
+                        var renCert = GetSingleRecord(renewResponse.Result.SerialNumber);
+                        return _requestManager.GetRenewResponse(renewResponse, renCert.Result);
+
 
                 }
 
@@ -327,7 +318,7 @@ namespace Keyfactor.Extensions.CAPlugin.DigicertMpki
             {
                 errors.Add("The Base URL is Empty and required.");
             }
-            else if(!baseURL.Contains("https")) 
+            else if (!baseURL.Contains("https"))
             {
                 errors.Add("The Base URL needs https://");
             }
@@ -473,9 +464,9 @@ namespace Keyfactor.Extensions.CAPlugin.DigicertMpki
             var paramList = DigiCertSymClient.ExtractEnrollmentParamsFromJson(path);
 
 
-            foreach(var param in paramList)
+            foreach (var param in paramList)
             {
-                var propConfig=GeneratePropertyConfig(param);
+                var propConfig = GeneratePropertyConfig(param);
                 templateParams.Add(param.Key, propConfig);
             }
 
