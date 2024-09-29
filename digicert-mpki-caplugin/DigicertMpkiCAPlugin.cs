@@ -1,4 +1,5 @@
-﻿using Keyfactor.AnyGateway.DigiCertSym;
+﻿using DigicertMpkiSoap;
+using Keyfactor.AnyGateway.DigiCertSym;
 using Keyfactor.AnyGateway.DigiCertSym.Client.Models;
 using Keyfactor.AnyGateway.Extensions;
 using Keyfactor.Extensions.CAPlugin.DigicertMpki.Client;
@@ -17,7 +18,6 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Xml.Serialization;
-
 
 namespace Keyfactor.Extensions.CAPlugin.DigicertMpki
 {
@@ -39,180 +39,148 @@ namespace Keyfactor.Extensions.CAPlugin.DigicertMpki
         public void Initialize(IAnyCAPluginConfigProvider configProvider, ICertificateDataReader certificateDataReader)
         {
             _certificateDataReader = certificateDataReader;
-            string rawConfig = JsonConvert.SerializeObject(configProvider.CAConnectionData);
-            _config = JsonConvert.DeserializeObject<DigicertMpkiConfig>(rawConfig);
-
+            _config = DeserializeConfig(configProvider.CAConnectionData);
             _logger.MethodEntry();
 
-            var connectors = GetCAConnectorAnnotations();
-
-
             _requestManager = new RequestManager(_logger, _config);
-
             _client = new DigiCertSymClient(_config, _logger);
-            //Templates = config.Config.Templates;
 
             _logger.MethodExit();
         }
 
+        private DigicertMpkiConfig DeserializeConfig(Dictionary<string, object> configData)
+        {
+            string rawConfig = JsonConvert.SerializeObject(configData);
+            return JsonConvert.DeserializeObject<DigicertMpkiConfig>(rawConfig);
+        }
 
         public async Task<AnyCAPluginCertificate> GetSingleRecord(string caRequestID)
         {
+            if (string.IsNullOrEmpty(caRequestID))
+            {
+                _logger.LogWarning("CA Request ID is null or empty.");
+                return null;
+            }
+
             try
             {
                 _logger.MethodEntry();
-                if (string.IsNullOrEmpty(caRequestID))
-                    return null;
-
-                var keyfactorCaId = caRequestID;
-                _logger.LogTrace($"Keyfactor Ca Id: {keyfactorCaId}");
-                var certificateResponse =
-                    Task.Run(async () => await _client.SubmitGetCertificateAsync(keyfactorCaId))
-                        .Result;
-
+                var certificateResponse = await _client.SubmitGetCertificateAsync(caRequestID);
                 _logger.LogTrace($"Single Cert JSON: {JsonConvert.SerializeObject(certificateResponse)}");
-                _logger.MethodExit();
 
+                _logger.MethodExit();
                 return new AnyCAPluginCertificate
                 {
-                    CARequestID = keyfactorCaId,
-                    Certificate = certificateResponse.Result.Certificate,
-                    Status = _requestManager.MapReturnStatus(certificateResponse.Result.Status)
+                    CARequestID = caRequestID,
+                    Certificate = certificateResponse?.Result?.Certificate,
+                    Status = _requestManager.MapReturnStatus(certificateResponse?.Result?.Status)
                 };
             }
             catch (Exception e)
             {
-                _logger.LogError($"GetSingleRecord Error Occurred: {e.Message}");
+                _logger.LogError($"Error retrieving single record: {e.Message}");
                 throw;
             }
         }
 
         public async Task Synchronize(BlockingCollection<AnyCAPluginCertificate> blockingBuffer, DateTime? lastSync, bool fullSync, CancellationToken cancelToken)
         {
+            if (!fullSync)
+            {
+                _logger.LogWarning("Partial synchronization is not supported.");
+                return;
+            }
+
             try
             {
-                //Only Full Sync is Supported so check for it.
-                if (fullSync)
+                foreach (var productModel in GetProductIds())
                 {
-                    //Loop through all the Digicert Profile OIDs that are setup in the config file
-                    foreach (var productModel in GetProductIds())
-                    {
-
-                        var pageCounter = 0;
-                        var pageSize = 50;
-                        var result =
-                            _client.SubmitQueryOrderRequest(_requestManager, productModel, pageCounter);
-                        var totalResults = result.searchCertificateResponse1.certificateCount;
-                        var totalPages = (totalResults + pageSize - 1) / pageSize;
-
-                        _logger.LogTrace(
-                            $"Product Model {productModel} Total Results {totalResults}, Total Pages {totalPages}");
-
-                        if (result.searchCertificateResponse1.certificateCount > 0)
-                        {
-                            for (var i = 0; i < totalPages; i++)
-                            {
-                                //If you need multiple pages make the request again
-                                if (pageCounter > 0)
-                                {
-                                    result = _client.SubmitQueryOrderRequest(_requestManager, productModel,
-                                        pageCounter);
-                                }
-
-                                XmlSerializer x = new XmlSerializer(result.GetType());
-                                TextWriter tw = new StringWriter();
-                                x.Serialize(tw, result);
-                                _logger.LogTrace($"Raw Search Cert Soap Response {tw}");
-
-                                foreach (var currentResponseItem in result.searchCertificateResponse1.certificateList)
-                                {
-                                    try
-                                    {
-                                        _logger.LogTrace(
-                                            $"Took Certificate ID {currentResponseItem?.serialNumber} from Queue");
-
-                                        if (currentResponseItem != null)
-                                        {
-                                            var certStatus =
-                                                _requestManager.MapReturnStatus(currentResponseItem.status);
-                                            _logger.LogTrace($"Certificate Status {certStatus}");
-
-                                            DateTime dateTime = new DateTime(1970, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc);
-                                            var base64Cert = Convert.ToBase64String(currentResponseItem.certificate);
-                                            try
-                                            {
-                                                var currentCert =
-                                                    new System.Security.Cryptography.X509Certificates.X509Certificate2(
-                                                        Encoding.ASCII.GetBytes(base64Cert));
-                                                blockingBuffer.Add(new AnyCAPluginCertificate
-                                                {
-                                                    CARequestID =
-                                                        $"{currentResponseItem.serialNumber}",
-                                                    Certificate = base64Cert,
-                                                    Status = certStatus,
-                                                    ProductID = $"{currentResponseItem.profileOID}",
-                                                    RevocationReason =
-                                                        _requestManager.MapSoapRevokeReason(currentResponseItem
-                                                            .revokeReason)
-                                                }, cancelToken);
-                                            }
-                                            catch (Exception e)
-                                            {
-                                                _logger.LogWarning(
-                                                    $"Invalid Certificate, skipping this one {LogHandler.FlattenException(e)}");
-                                            }
-                                        }
-                                    }
-                                    catch (OperationCanceledException e)
-                                    {
-                                        _logger.LogError($"Synchronize was canceled. {e.Message}");
-                                        break;
-                                    }
-                                }
-
-                                pageCounter += pageSize;
-                            }
-                        }
-                    }
+                    await ProcessProductModel(productModel, blockingBuffer, cancelToken);
                 }
             }
-            catch (AggregateException aggEx)
+            catch (Exception e)
             {
-                _logger.LogError("Digicert mPKI Synchronize Task failed!");
-                _logger.MethodExit();
-                // ReSharper disable once PossibleIntendedRethrow
-                throw aggEx;
+                _logger.LogError($"Synchronization failed: {e.Message}");
+                throw;
             }
+        }
 
-            _logger.MethodExit();
+        private async Task ProcessProductModel(string productModel, BlockingCollection<AnyCAPluginCertificate> blockingBuffer, CancellationToken cancelToken)
+        {
+            int pageCounter = 0;
+            const int pageSize = 50;
+
+            var result = _client.SubmitQueryOrderRequest(_requestManager, productModel, pageCounter);
+            int totalResults = result.searchCertificateResponse1.certificateCount;
+            int totalPages = (totalResults + pageSize - 1) / pageSize;
+
+            _logger.LogTrace($"Product {productModel} Total Results: {totalResults}, Total Pages: {totalPages}");
+
+            for (int i = 0; i < totalPages; i++)
+            {
+                if (pageCounter > 0)
+                    result = _client.SubmitQueryOrderRequest(_requestManager, productModel, pageCounter);
+
+                LogSoapResponse(result);
+                var certificateList = result.searchCertificateResponse1.certificateList ?? new CertificateSearchResultType[0];
+
+                foreach (var currentResponseItem in certificateList)
+                {
+                    if (currentResponseItem == null) continue;
+
+                    try
+                    {
+                        var certStatus = _requestManager.MapReturnStatus(currentResponseItem.status);
+                        _logger.LogTrace($"Certificate Status: {certStatus}");
+
+                        var base64Cert = Convert.ToBase64String(currentResponseItem.certificate);
+                        var currentCert = new System.Security.Cryptography.X509Certificates.X509Certificate2(Encoding.ASCII.GetBytes(base64Cert));
+
+                        blockingBuffer.Add(new AnyCAPluginCertificate
+                        {
+                            CARequestID = currentResponseItem.serialNumber,
+                            Certificate = base64Cert,
+                            Status = certStatus,
+                            ProductID = currentResponseItem.profileOID,
+                            RevocationReason = _requestManager.MapSoapRevokeReason(currentResponseItem.revokeReason)
+                        }, cancelToken);
+                    }
+                    catch (Exception e)
+                    {
+                        _logger.LogWarning($"Invalid certificate, skipping. Error: {LogHandler.FlattenException(e)}");
+                    }
+                }
+
+                pageCounter += pageSize;
+            }
+        }
+
+        private void LogSoapResponse(object result)
+        {
+            XmlSerializer x = new XmlSerializer(result.GetType());
+            using (TextWriter tw = new StringWriter())
+            {
+                x.Serialize(tw, result);
+                _logger.LogTrace($"Raw Search Cert SOAP Response: {tw}");
+            }
         }
 
         public async Task<int> Revoke(string caRequestID, string hexSerialNumber, uint revocationReason)
         {
             try
             {
-                _logger.LogTrace("Staring Revoke Method");
-                //Digicert can't find serial numbers with leading zeros
-                hexSerialNumber = hexSerialNumber.TrimStart(new char[] { '0' });
+                _logger.LogTrace("Starting Revoke Method");
+                hexSerialNumber = hexSerialNumber.TrimStart('0');
                 var revokeRequest = _requestManager.GetRevokeRequest(revocationReason);
 
-                var revokeResponse =
-                    Task.Run(async () =>
-                            await _client.SubmitRevokeCertificateAsync(hexSerialNumber, revokeRequest))
-                        .Result;
-
+                var revokeResponse = await _client.SubmitRevokeCertificateAsync(hexSerialNumber, revokeRequest);
                 _logger.LogTrace($"Revoke Response JSON: {JsonConvert.SerializeObject(revokeResponse)}");
 
-                var revokeResult = _requestManager.GetRevokeResult(revokeResponse);
-
-                if (revokeResult == Convert.ToInt32(PKIConstants.Microsoft.RequestDisposition.FAILED))
-                    throw new Exception("Revoke failed");
-
-                return revokeResult;
+                return _requestManager.GetRevokeResult(revokeResponse);
             }
             catch (Exception e)
             {
-                _logger.LogError($"Revoke Error Occurred: {e.Message}");
+                _logger.LogError($"Revoke Error: {e.Message}");
                 throw;
             }
         }
@@ -221,143 +189,92 @@ namespace Keyfactor.Extensions.CAPlugin.DigicertMpki
         {
             _logger.MethodEntry();
 
-            EnrollmentRequest enrollmentRequest;
-            EnrollmentRequest renewRequest;
-
             try
             {
                 var productList = GetProductList();
-                switch (enrollmentType)
+                return enrollmentType switch
                 {
-                    case EnrollmentType.New:
-                        _logger.LogTrace("Entering New Enrollment");
-                        //If they renewed an expired cert it gets here and this will not be supported
-
-                        enrollmentRequest = _requestManager.GetEnrollmentRequest(productInfo, csr, san, productList);
-                        _logger.LogTrace($"Enrollment Request JSON: {JsonConvert.SerializeObject(enrollmentRequest)}");
-                        var enrollmentResponse =
-                            Task.Run(async () => await _client.SubmitEnrollmentAsync(enrollmentRequest))
-                                .Result;
-
-                        if (enrollmentResponse?.Result == null)
-                            return new EnrollmentResult
-                            {
-                                Status = (int)EndEntityStatus.FAILED, //failure
-                                StatusMessage =
-                                    $"Enrollment Failed: {_requestManager.FlattenErrors(enrollmentResponse?.RegistrationError.Errors)}"
-                            };
-
-
-                        _logger.LogTrace($"Enrollment Response JSON: {JsonConvert.SerializeObject(enrollmentResponse)}");
-
-                        _logger.MethodExit();
-
-                        var cert = GetSingleRecord(enrollmentResponse.Result.SerialNumber);
-                        return _requestManager.GetEnrollmentResult(enrollmentResponse, cert.Result);
-                    case EnrollmentType.Renew:
-                    case EnrollmentType.RenewOrReissue:
-                        _logger.LogTrace("Entering Renew Enrollment");
-                        _logger.LogTrace("Checking To Make sure it is not one click renew (not supported)");
-                        //KeyFactor needs a better way to detect one click renewals, some flag or something
-
-                        var priorCertSn = productInfo.ProductParameters["PriorCertSN"];
-                        _logger.LogTrace($"Renew Serial Number: {priorCertSn}");
-                        renewRequest = _requestManager.GetEnrollmentRequest(productInfo, csr, san, productList);
-
-                        _logger.LogTrace($"Renewal Request JSON: {JsonConvert.SerializeObject(renewRequest)}");
-                        var renewResponse = Task.Run(async () =>
-                                await _client.SubmitRenewalAsync(priorCertSn, renewRequest))
-                            .Result;
-                        if (renewResponse?.Result == null)
-                            return new EnrollmentResult
-                            {
-                                Status = (int)EndEntityStatus.FAILED, //failure
-                                StatusMessage =
-                                    $"Enrollment Failed {_requestManager.FlattenErrors(renewResponse?.RegistrationError.Errors)}"
-                            };
-
-                        _logger.MethodExit();
-                        var renCert = GetSingleRecord(renewResponse.Result.SerialNumber);
-                        return _requestManager.GetRenewResponse(renewResponse, renCert.Result);
-
-
-                }
-
-                _logger.MethodExit();
-                return null;
+                    EnrollmentType.New => await ProcessNewEnrollment(csr, san, productInfo, productList),
+                    EnrollmentType.Renew or EnrollmentType.RenewOrReissue => await ProcessRenewEnrollment(csr, productInfo, san),
+                    _ => throw new NotSupportedException("Unsupported enrollment type")
+                };
             }
             catch (Exception e)
             {
-                _logger.LogError($"Enrollment Error Occurred: {e.Message}");
+                _logger.LogError($"Enrollment Error: {e.Message}");
                 throw;
             }
         }
 
-        public async Task Ping()
+        private async Task<EnrollmentResult> ProcessNewEnrollment(string csr, Dictionary<string, string[]> san, EnrollmentProductInfo productInfo, Dictionary<string, string> productList)
         {
-            _logger.MethodEntry(LogLevel.Trace);
-            _logger.MethodExit(LogLevel.Trace);
+            _logger.LogTrace("Entering New Enrollment");
+            var enrollmentRequest = _requestManager.GetEnrollmentRequest(productInfo, csr, san, productList);
+
+            _logger.LogTrace($"Enrollment Request JSON: {JsonConvert.SerializeObject(enrollmentRequest)}");
+            var enrollmentResponse = await _client.SubmitEnrollmentAsync(enrollmentRequest);
+
+            if (enrollmentResponse?.Result == null)
+                return EnrollmentFailedResult(_requestManager.FlattenErrors(enrollmentResponse?.RegistrationError.Errors));
+
+            var cert = await GetSingleRecord(enrollmentResponse.Result.SerialNumber);
+            return _requestManager.GetEnrollmentResponse(enrollmentResponse, cert);
         }
+
+        private async Task<EnrollmentResult> ProcessRenewEnrollment(string csr, EnrollmentProductInfo productInfo, Dictionary<string, string[]> san)
+        {
+            _logger.LogTrace("Entering Renew Enrollment");
+            string priorCertSn = productInfo.ProductParameters["PriorCertSN"];
+            _logger.LogTrace($"Renew Serial Number: {priorCertSn}");
+
+            var renewRequest = _requestManager.GetEnrollmentRequest(productInfo, csr, san, GetProductList());
+            _logger.LogTrace($"Renewal Request JSON: {JsonConvert.SerializeObject(renewRequest)}");
+
+            var renewResponse = await _client.SubmitRenewalAsync(priorCertSn, renewRequest);
+            if (renewResponse?.Result == null)
+                return EnrollmentFailedResult(_requestManager.FlattenErrors(renewResponse?.RegistrationError.Errors));
+
+            var renCert = await GetSingleRecord(renewResponse.Result.SerialNumber);
+            return _requestManager.GetRenewResponse(renewResponse, renCert);
+        }
+
+        private EnrollmentResult EnrollmentFailedResult(string errorMessage) => new EnrollmentResult
+        {
+            Status = (int)EndEntityStatus.FAILED,
+            StatusMessage = $"Enrollment Failed: {errorMessage}"
+        };
+
+        public async Task Ping() => _logger.LogTrace("Ping successful.");
 
         public async Task ValidateCAConnectionInfo(Dictionary<string, object> connectionInfo)
         {
-            _logger.LogInformation("Validation successful");
-
-            List<string> errors = new List<string>();
-
-            _logger.LogTrace("Checking the API Key.");
-            string apiKey = connectionInfo.ContainsKey(Constants.DigiCertSymApiKey) ? (string)connectionInfo[Constants.DigiCertSymApiKey] : string.Empty;
-            if (string.IsNullOrWhiteSpace(apiKey))
-            {
-                errors.Add("The API Key is required.");
-            }
-
-            _logger.LogTrace("Checking the Base URL.");
-            string baseURL = connectionInfo.ContainsKey(Constants.DigiCertSymUrl) ? (string)connectionInfo[Constants.DigiCertSymUrl] : string.Empty;
-            if (string.IsNullOrWhiteSpace(baseURL))
-            {
-                errors.Add("The Base URL is Empty and required.");
-            }
-            else if (!baseURL.Contains("https"))
-            {
-                errors.Add("The Base URL needs https://");
-            }
-
-            _logger.LogTrace("Checking the SOAP Endpoint Address.");
-            string soapEndpoint = connectionInfo.ContainsKey(Constants.EndpointAddress) ? (string)connectionInfo[Constants.EndpointAddress] : string.Empty;
-            if (string.IsNullOrWhiteSpace(soapEndpoint))
-            {
-                errors.Add("The SOAP URL is Empty and required.");
-            }
-            else if (!soapEndpoint.Contains("https"))
-            {
-                errors.Add("The SOAP URL needs https://");
-            }
-
-            _logger.LogTrace("Checking the Client Certificate Location.");
-            string clientCertLocation = connectionInfo.ContainsKey(Constants.ClientCertLocation) ? (string)connectionInfo[Constants.ClientCertLocation] : string.Empty;
-            if (string.IsNullOrWhiteSpace(clientCertLocation))
-            {
-                errors.Add("The Client Certificate Location Is a required value.");
-            }
-            _logger.LogTrace("Checking the Client Certificate Password.");
-            string clientCertPassword = connectionInfo.ContainsKey(Constants.ClientCertPassword) ? (string)connectionInfo[Constants.ClientCertPassword] : string.Empty;
-            if (string.IsNullOrWhiteSpace(clientCertPassword))
-            {
-                errors.Add("The Client Certificate Password Is a required value.");
-            }
-
-            _logger.LogTrace("Checking the DNS Constant Name.");
-            string DnsConstantName = connectionInfo.ContainsKey(Constants.DnsConstName) ? (string)connectionInfo[Constants.DnsConstName] : string.Empty;
-            if (string.IsNullOrWhiteSpace(clientCertPassword))
-            {
-                errors.Add("The DNS Constant Name is a required value.");
-            }
-
+            List<string> errors = ValidateConnectionInfo(connectionInfo);
             if (errors.Any())
-            {
                 ThrowValidationException(errors);
-            }
+
+            _logger.LogInformation("Validation successful");
+        }
+
+        private List<string> ValidateConnectionInfo(Dictionary<string, object> connectionInfo)
+        {
+            var errors = new List<string>();
+
+            CheckRequiredField(connectionInfo, Constants.DigiCertSymApiKey, "API Key", errors);
+            CheckRequiredField(connectionInfo, Constants.DigiCertSymUrl, "Base URL", errors, url => !url.Contains("https"), "The Base URL needs https://");
+            CheckRequiredField(connectionInfo, Constants.EndpointAddress, "SOAP Endpoint", errors, url => !url.Contains("https"), "The SOAP URL needs https://");
+            CheckRequiredField(connectionInfo, Constants.ClientCertLocation, "Client Certificate Location", errors);
+            CheckRequiredField(connectionInfo, Constants.ClientCertPassword, "Client Certificate Password", errors);
+
+            return errors;
+        }
+
+        private void CheckRequiredField(Dictionary<string, object> connectionInfo, string key, string fieldName, List<string> errors, Func<string, bool> condition = null, string conditionMessage = null)
+        {
+            string value = connectionInfo.ContainsKey(key) ? connectionInfo[key]?.ToString() : string.Empty;
+            if (string.IsNullOrWhiteSpace(value))
+                errors.Add($"{fieldName} is required.");
+            else if (condition != null && condition(value))
+                errors.Add(conditionMessage);
         }
 
         private void ThrowValidationException(List<string> errors)
@@ -366,11 +283,7 @@ namespace Keyfactor.Extensions.CAPlugin.DigicertMpki
             throw new AnyCAValidationException(validationMsg);
         }
 
-        public Task ValidateProductInfo(EnrollmentProductInfo productInfo, Dictionary<string, object> connectionInfo)
-        {
-            _logger.LogInformation("Product Info validated successfully");
-            return Task.CompletedTask;
-        }
+        public Task ValidateProductInfo(EnrollmentProductInfo productInfo, Dictionary<string, object> connectionInfo) => Task.CompletedTask;
 
         public Dictionary<string, PropertyConfigInfo> GetCAConnectorAnnotations()
         {
@@ -450,68 +363,34 @@ namespace Keyfactor.Extensions.CAPlugin.DigicertMpki
             };
         }
 
+
         public Dictionary<string, PropertyConfigInfo> GetTemplateParameterAnnotations()
         {
-            var templateParams = new Dictionary<string, PropertyConfigInfo>();
+            var path = GetExecutingPath();
+            var paramList = DigiCertSymClient.ExtractEnrollmentParamsFromJson(path);
 
-            _logger.LogTrace("Getting File Execution Location to retrieve path");
+            return paramList.ToDictionary(param => param.Key, param => new PropertyConfigInfo
+            {
+                Comments = string.Empty,
+                Hidden = false,
+                Type = param.Value
+            });
+        }
+
+        private string GetExecutingPath()
+        {
             string codeBase = Assembly.GetExecutingAssembly().Location;
             UriBuilder uri = new UriBuilder(codeBase);
             string path = Uri.UnescapeDataString(uri.Path);
-            path = Path.GetDirectoryName(path) + "\\";
-            _logger.LogTrace($"Executing path for the file is: {path}");
-
-            var paramList = DigiCertSymClient.ExtractEnrollmentParamsFromJson(path);
-
-
-            foreach (var param in paramList)
-            {
-                var propConfig = GeneratePropertyConfig(param);
-                templateParams.Add(param.Key, propConfig);
-            }
-
-            return templateParams;
+            return Path.GetDirectoryName(path) + "\\";
         }
 
-        private PropertyConfigInfo GeneratePropertyConfig(KeyValuePair<string, string> param)
-        {
-            return new PropertyConfigInfo()
-            {
-                Comments = "",
-                Hidden = false,
-                DefaultValue = "",
-                Type = param.Value,
-            };
-
-        }
-
-        public List<string> GetProductIds()
-        {
-            var productIds = GetProductList();
-            return productIds.Values.ToList();
-        }
+        public List<string> GetProductIds() => GetProductList().Values.ToList();
 
         private Dictionary<string, string> GetProductList()
         {
-            _logger.LogTrace("Getting File Execution Location to retrieve path");
-            string codeBase = Assembly.GetExecutingAssembly().Location;
-            UriBuilder uri = new UriBuilder(codeBase);
-            string path = Uri.UnescapeDataString(uri.Path);
-            path = Path.GetDirectoryName(path) + "\\";
-            _logger.LogTrace($"Executing path for the file is: {path}");
-
-            var productIds = DigiCertSymClient.ExtractProfileIdsFromJson(path);
-
-            return productIds;
-
+            string path = GetExecutingPath();
+            return DigiCertSymClient.ExtractProfileIdsFromJson(path);
         }
-
-
-        Task<AnyCAPluginCertificate> IAnyCAPlugin.GetSingleRecord(string caRequestID)
-        {
-            throw new NotImplementedException();
-        }
-
     }
 }
-
