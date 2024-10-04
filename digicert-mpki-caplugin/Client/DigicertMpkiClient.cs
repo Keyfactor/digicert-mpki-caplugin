@@ -16,6 +16,7 @@ using System.ServiceModel;
 using DigicertMpkiSoap;
 using Newtonsoft.Json.Linq;
 using System.Collections.Generic;
+using Keyfactor.Extensions.CAPlugin.DigicertMpki.Models;
 
 namespace Keyfactor.Extensions.CAPlugin.DigicertMpki.Client
 {
@@ -73,6 +74,27 @@ namespace Keyfactor.Extensions.CAPlugin.DigicertMpki.Client
                         JsonConvert.DeserializeObject<EnrollmentSuccessResponse>(await resp.Content.ReadAsStringAsync(),
                             settings);
                     response = new EnrollmentResponse { RegistrationError = null, Result = registrationResponse };
+                    return response;
+                }
+            }
+            catch (Exception e)
+            {
+                _logger.LogError($"SubmitEnrollmentAsync Error Occurred {e.Message}");
+                throw;
+            }
+        }
+
+        public async Task<List<CertificateProfile>> SubmitGetProfilesAsync()
+        {
+            try
+            {
+                using (var resp = await RestClient.GetAsync("/mpki/api/v1/profile"))
+                {
+                    List<CertificateProfile> response;
+                    var settings = new JsonSerializerSettings { NullValueHandling = NullValueHandling.Ignore };
+                    response =
+                        JsonConvert.DeserializeObject<List<CertificateProfile>>(await resp.Content.ReadAsStringAsync(),
+                            settings);
                     return response;
                 }
             }

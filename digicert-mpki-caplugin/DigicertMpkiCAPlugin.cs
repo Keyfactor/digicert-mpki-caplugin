@@ -3,6 +3,7 @@ using Keyfactor.AnyGateway.DigiCertSym;
 using Keyfactor.AnyGateway.DigiCertSym.Client.Models;
 using Keyfactor.AnyGateway.Extensions;
 using Keyfactor.Extensions.CAPlugin.DigicertMpki.Client;
+using Keyfactor.Extensions.CAPlugin.DigicertMpki.Models;
 using Keyfactor.Logging;
 using Keyfactor.PKI;
 using Keyfactor.PKI.Enums.EJBCA;
@@ -209,7 +210,11 @@ namespace Keyfactor.Extensions.CAPlugin.DigicertMpki
         private async Task<EnrollmentResult> ProcessNewEnrollment(string csr, Dictionary<string, string[]> san, EnrollmentProductInfo productInfo, Dictionary<string, string> productList)
         {
             _logger.LogTrace("Entering New Enrollment");
-            var enrollmentRequest = _requestManager.GetEnrollmentRequest(productInfo, csr, san, productList);
+            var profiles = await _client.SubmitGetProfilesAsync();
+
+            var sanAttributes=GetSanAttributesByProfile(profiles);
+
+            var enrollmentRequest = _requestManager.GetEnrollmentRequest(productInfo, csr, san, productList,sanAttributes);
 
             _logger.LogTrace($"Enrollment Request JSON: {JsonConvert.SerializeObject(enrollmentRequest)}");
             var enrollmentResponse = await _client.SubmitEnrollmentAsync(enrollmentRequest);
@@ -218,8 +223,48 @@ namespace Keyfactor.Extensions.CAPlugin.DigicertMpki
                 return EnrollmentFailedResult(_requestManager.FlattenErrors(enrollmentResponse?.RegistrationError.Errors));
 
             var cert = await GetSingleRecord(enrollmentResponse.Result.SerialNumber);
-            return _requestManager.GetEnrollmentResponse(enrollmentResponse, cert);
+            return _requestManager.GetEnrollmentResult(enrollmentResponse, cert);
         }
+
+        public static Dictionary<Tuple<string, string>, string> GetSanAttributesByProfile(List<CertificateProfile> profiles)
+        {
+            // Collect all attribute IDs from the SAN extensions
+            Dictionary<Tuple<string, string>, string> attributeIds = new Dictionary<Tuple<string, string>, string>();
+
+            try
+            {
+                foreach (var profile in profiles)
+                {
+                    // Check if the certificate and extensions are not null
+                    if (profile.Certificate?.Extensions?.San?.Attributes != null)
+                    {
+                        foreach (var attribute in profile.Certificate.Extensions.San.Attributes)
+                        {
+                            if (!string.IsNullOrEmpty(attribute.Id))
+                            {
+                                var attType=attribute.Type;
+
+                                if(attributeIds.ContainsKey(Tuple.Create(profile.Id, attribute.Type)) && attribute.Id.Contains("_multi"))
+                                {
+                                    attType= attribute.Type + "_multi";
+                                }
+                                attributeIds.Add(Tuple.Create(profile.Id, attType), attribute.Id);
+                            }
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                // Handle exceptions here, for example, by logging the error
+                Console.WriteLine($"An error occurred while processing SAN attributes: {ex.Message}");
+                // Optionally, you can rethrow the exception if needed
+                // throw;
+            }
+
+            return attributeIds;
+        }
+
 
         private async Task<EnrollmentResult> ProcessRenewEnrollment(string csr, EnrollmentProductInfo productInfo, Dictionary<string, string[]> san)
         {
@@ -227,7 +272,11 @@ namespace Keyfactor.Extensions.CAPlugin.DigicertMpki
             string priorCertSn = productInfo.ProductParameters["PriorCertSN"];
             _logger.LogTrace($"Renew Serial Number: {priorCertSn}");
 
-            var renewRequest = _requestManager.GetEnrollmentRequest(productInfo, csr, san, GetProductList());
+            var profiles = await _client.SubmitGetProfilesAsync();
+
+            var sanAttributes = GetSanAttributesByProfile(profiles);
+
+            var renewRequest = _requestManager.GetEnrollmentRequest(productInfo, csr, san, GetProductList(),sanAttributes);
             _logger.LogTrace($"Renewal Request JSON: {JsonConvert.SerializeObject(renewRequest)}");
 
             var renewResponse = await _client.SubmitRenewalAsync(priorCertSn, renewRequest);
