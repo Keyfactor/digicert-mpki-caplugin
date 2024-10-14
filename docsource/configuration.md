@@ -86,7 +86,7 @@ The Clearpass AnyCA Gateway REST plugin extends the capabilities of Aruba Clearp
 
 5. **Command Gateway Translation**:
    - This will be used when setting up the Gateway as the CaId as explained in the Configuration section.
-   
+
 #### Note
 At the time of writing, there was no API call available to get a list of Certificate Authorities in ClearPass Onboard. Therefore, this method of extracting the ID from the URL was the only known way to obtain it.
 
@@ -120,4 +120,8 @@ At the time of writing, there was no API call available to get a list of Certifi
 ## Gateway Registration
 
 Each defined Certificate Authority in the AnyCA Gateway REST can support one issuing certificate authority. Since Aruba ClearPass Onboard has multiple available Certificate Authorities, if you require certificate enrollment from multiple Aruba ClearPass Certificate Authorities, you must define multiple Certificate Authorities in the AnyCA Gateway REST. This will manifest in Command as one Aruba ClearPass CA per defined Certificate Authority.
+
+## Certificate Template Creation Step
+
+TODO Certificate Template Creation Step is a required section
 
