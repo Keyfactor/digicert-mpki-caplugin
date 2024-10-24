@@ -373,34 +373,6 @@ namespace Keyfactor.Extensions.CAPlugin.DigicertMpki
                     DefaultValue = "",
                     Type = "String"
                 },
-                [Constants.DnsConstName] = new PropertyConfigInfo()
-                {
-                    Comments = "Name of the constant DNS Name that digicert expects in the API.",
-                    Hidden = false,
-                    DefaultValue = "dnsName",
-                    Type = "String"
-                },
-                [Constants.UpnConstName] = new PropertyConfigInfo()
-                {
-                    Comments = "Name of the constant Upn name that digicert expects in the API.",
-                    Hidden = false,
-                    DefaultValue = "otherNameUPN",
-                    Type = "String"
-                },
-                [Constants.IpConstName] = new PropertyConfigInfo()
-                {
-                    Comments = "Name of the constant Ip San Name that digicert expects in the API.",
-                    Hidden = false,
-                    DefaultValue = "san_ipAddress",
-                    Type = "String"
-                },
-                [Constants.EmailConstName] = new PropertyConfigInfo()
-                {
-                    Comments = "Name of the constant Email Name that digicert expects in the API.",
-                    Hidden = false,
-                    DefaultValue = "mail_email",
-                    Type = "String"
-                },
                 [Constants.OuStartPoint] = new PropertyConfigInfo()
                 {
                     Comments = "Value of the OuStartPoint Name that digicert expects in the API.",
