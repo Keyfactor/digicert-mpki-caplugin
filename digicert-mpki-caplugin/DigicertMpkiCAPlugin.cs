@@ -1,6 +1,6 @@
 ﻿using DigicertMpkiSoap;
-using Keyfactor.AnyGateway.DigiCertSym;
-using Keyfactor.AnyGateway.DigiCertSym.Client.Models;
+using Keyfactor.AnyGateway.DigicertMpki;
+using Keyfactor.AnyGateway.DigicertMpki.Client.Models;
 using Keyfactor.AnyGateway.Extensions;
 using Keyfactor.Extensions.CAPlugin.DigicertMpki.Client;
 using Keyfactor.Extensions.CAPlugin.DigicertMpki.Models;
@@ -214,7 +214,7 @@ namespace Keyfactor.Extensions.CAPlugin.DigicertMpki
 
             var sanAttributes=GetSanAttributesByProfile(profiles);
 
-            var enrollmentRequest = _requestManager.GetEnrollmentRequest(productInfo, csr, san, productList,sanAttributes);
+            var enrollmentRequest = _requestManager.GetEnrollmentRequest(productInfo, csr, san, productList,sanAttributes, profiles);
 
             _logger.LogTrace($"Enrollment Request JSON: {JsonConvert.SerializeObject(enrollmentRequest)}");
             var enrollmentResponse = await _client.SubmitEnrollmentAsync(enrollmentRequest);
@@ -276,7 +276,7 @@ namespace Keyfactor.Extensions.CAPlugin.DigicertMpki
 
             var sanAttributes = GetSanAttributesByProfile(profiles);
 
-            var renewRequest = _requestManager.GetEnrollmentRequest(productInfo, csr, san, GetProductList(),sanAttributes);
+            var renewRequest = _requestManager.GetEnrollmentRequest(productInfo, csr, san, GetProductList(),sanAttributes, profiles);
             _logger.LogTrace($"Renewal Request JSON: {JsonConvert.SerializeObject(renewRequest)}");
 
             var renewResponse = await _client.SubmitRenewalAsync(priorCertSn, renewRequest);

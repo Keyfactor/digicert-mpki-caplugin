@@ -10,9 +10,9 @@
 ﻿using System.Collections.Generic;
 using Newtonsoft.Json;
 
-namespace Keyfactor.AnyGateway.DigiCertSym.Client.Models
+namespace Keyfactor.AnyGateway.DigicertMpki.Client.Models
 {
-    public class San
+    public class DigicertSan
     {
         [JsonProperty("custom_attributes", NullValueHandling = NullValueHandling.Ignore)] public CustomAttributes CustomAttributes { get; set; }
         [JsonProperty("directory_name", NullValueHandling = NullValueHandling.Ignore)] public string DirectoryName { get; set; }

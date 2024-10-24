@@ -9,7 +9,7 @@
 // License. 
 ﻿using System;
 
-namespace Keyfactor.AnyGateway.DigiCertSym.Exceptions
+namespace Keyfactor.AnyGateway.DigicertMpki.Exceptions
 {
     public class RetryCountExceededException : Exception
     {

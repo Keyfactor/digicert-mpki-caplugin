@@ -9,7 +9,7 @@
 // License. 
 ﻿using System.Collections.Generic;
 
-namespace Keyfactor.AnyGateway.DigiCertSym.Client.Models
+namespace Keyfactor.AnyGateway.DigicertMpki.Client.Models
 {
     public class ErrorList
     {

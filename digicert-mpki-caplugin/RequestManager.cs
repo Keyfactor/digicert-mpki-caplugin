@@ -12,7 +12,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Reflection;
 using System.Text.RegularExpressions;
-using Keyfactor.AnyGateway.DigiCertSym.Client.Models;
+using Keyfactor.AnyGateway.DigicertMpki.Client.Models;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using Org.BouncyCastle.Asn1.Pkcs;
@@ -26,8 +26,9 @@ using DigicertMpkiSoap;
 using Keyfactor.Extensions.CAPlugin.DigicertMpki;
 using Keyfactor.PKI.Enums.EJBCA;
 using Keyfactor.Logging;
+using Keyfactor.Extensions.CAPlugin.DigicertMpki.Models;
 
-namespace Keyfactor.AnyGateway.DigiCertSym
+namespace Keyfactor.AnyGateway.DigicertMpki
 {
     public class RequestManager
     {
@@ -273,7 +274,7 @@ namespace Keyfactor.AnyGateway.DigiCertSym
         }
 
         public EnrollmentRequest GetEnrollmentRequest(EnrollmentProductInfo productInfo, string csr,
-            Dictionary<string, string[]> san, Dictionary<string, string> productList,Dictionary<Tuple<string,string>,string> sanAttributes)
+            Dictionary<string, string[]> san, Dictionary<string, string> productList,Dictionary<Tuple<string,string>,string> sanAttributes,List<CertificateProfile> profiles)
         {
             try
             {
@@ -281,9 +282,10 @@ namespace Keyfactor.AnyGateway.DigiCertSym
                 _logger.LogTrace($"csr: {csr}");
                 var pemCert = csr;
 
-                var sn = new San();
+                var sn = new DigicertSan();
                 CertificationRequestInfo csrParsed;
 
+               
                 using (TextReader sr = new StringReader(pemCert))
                 {
                     var reader = new PemReader(sr);
@@ -389,7 +391,7 @@ namespace Keyfactor.AnyGateway.DigiCertSym
                     _logger.LogTrace($"upn: {upKp}");
 
                     //Multiple UPNs not supported by Digicert so take the first one in the list
-                    UserPrincipalName up = new UserPrincipalName { Id = UpnConstantName, Value = upKp.FirstOrDefault() };
+                    UserPrincipalName up = new UserPrincipalName { Id = sanAttributes[Tuple.Create(productInfo.ProductID, "otherNameUPN")], Value = upKp.FirstOrDefault() };
                     upList.Add(up);
                     sn.UserPrincipalName = upList;
                 }
@@ -403,21 +405,21 @@ namespace Keyfactor.AnyGateway.DigiCertSym
                     _logger.LogTrace($"ip: {ipKp}");
 
                     //Multiple IP Addresses not supported by Digicert so take the first one in the list
-                    IpAddress ip = new IpAddress { Id = IpConstantName, Value = ipKp.FirstOrDefault() };
+                    IpAddress ip = new IpAddress { Id = sanAttributes[Tuple.Create(productInfo.ProductID, "ip_address")], Value = ipKp.FirstOrDefault() };
                     ipList.Add(ip);
                     sn.IpAddress = ipList;
                 }
 
                 //8. Loop through mail Entries
-                if (san.ContainsKey("email"))
+                if (san.ContainsKey("rfc822name"))
                 {
                     var mailList = new List<Rfc822Name>();
-                    var mailKp = san["email"];
+                    var mailKp = san["rfc822name"];
 
                     _logger.LogTrace($"mail: {mailKp}");
 
                     //Multiple IP Addresses not supported by Digicert so take the first one in the list
-                    Rfc822Name mail = new Rfc822Name { Id = EmailConstantName, Value = mailKp.FirstOrDefault() };
+                    Rfc822Name mail = new Rfc822Name { Id = sanAttributes[Tuple.Create(productInfo.ProductID, "rfc822_name")], Value = mailKp.FirstOrDefault() };
                     mailList.Add(mail);
                     sn.Rfc822Name = mailList;
                 }
@@ -428,14 +430,28 @@ namespace Keyfactor.AnyGateway.DigiCertSym
                 var organizationalUnits = organizationUnitsRaw.Split('/');
                 var orgUnits = new List<OrganizationUnit>();
                 _logger.LogTrace($"OuStartPoint is {OuStartPoint}");
-                var i = OuStartPoint;
-                foreach (var ou in organizationalUnits)
+
+                var orgUnitIds = ProcessProfiles(profiles, productInfo.ProductID);
+
+                List<string> uniqueCertOrgUnits = new List<string>();
+
+                foreach (var item in orgUnitIds.Item1)
                 {
-                    var organizationUnit = new OrganizationUnit { Id = OuStartPoint == 0 ? "cert_org_unit" : "cert_org_unit" + i, Value = ou };
-                    orgUnits.Add(organizationUnit);
-                    i++;
+                    // Extract the cert_org_unit part from the key
+                    string certOrgUnitKey = item.Key.Item2;
+                    uniqueCertOrgUnits.Add(certOrgUnitKey);
                 }
 
+                if (uniqueCertOrgUnits.Count > 0)
+                {
+                    var i = 0;
+                    foreach (var ou in organizationalUnits)
+                    {
+                        var organizationUnit = new OrganizationUnit { Id = uniqueCertOrgUnits[i], Value = ou };
+                        orgUnits.Add(organizationUnit);
+                        i++;
+                    }
+                }
                 var attributes = enrollmentRequest.Attributes;
                 attributes.OrganizationUnit = orgUnits;
                 attributes.San = sn;
@@ -572,6 +588,46 @@ namespace Keyfactor.AnyGateway.DigiCertSym
                 throw;
             }
         }
+
+        private static (Dictionary<Tuple<string, string>, string>, Dictionary<Tuple<string, string>, bool>) ProcessProfiles(List<CertificateProfile> certificateProfiles, string profileId)
+        {
+            // Dictionary to store the result
+            Dictionary<Tuple<string, string>, string> subjectAttributeIds = new Dictionary<Tuple<string, string>, string>();
+            Dictionary<Tuple<string, string>, bool> mandatoryFlags = new Dictionary<Tuple<string, string>, bool>();
+
+            // Filter the list by profileId
+            var filteredProfiles = certificateProfiles.FindAll(profile => profile.Id == profileId);
+
+            // Iterate over each filtered CertificateProfile
+            foreach (var profile in filteredProfiles)
+            {
+                string certificateId = profile.Id;
+
+                // Check if the certificate has subject attributes
+                if (profile.Certificate != null && profile.Certificate.Subject != null && profile.Certificate.Subject.Attributes != null)
+                {
+                    foreach (var attribute in profile.Certificate.Subject.Attributes)
+                    {
+                        // Only process attributes that have an ID
+                        if (!string.IsNullOrEmpty(attribute.Id))
+                        {
+                            // Create a tuple with the certificate ID and the subject attribute ID
+                            var key = new Tuple<string, string>(certificateId, attribute.Id);
+
+                            // Store the attribute type in the dictionary
+                            subjectAttributeIds[key] = attribute.Type;
+
+                            // Store the mandatory flag in the separate dictionary
+                            mandatoryFlags[key] = attribute.Mandatory;
+                        }
+                    }
+                }
+            }
+
+            // Return both dictionaries as a tuple
+            return (subjectAttributeIds, mandatoryFlags);
+        }
+
 
         private string ReplaceProductParam(KeyValuePair<string, string> productParam, string jsonResult)
         {

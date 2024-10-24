@@ -10,7 +10,7 @@
 ﻿using System.Collections.Generic;
 using Newtonsoft.Json;
 
-namespace Keyfactor.AnyGateway.DigiCertSym.Client.Models
+namespace Keyfactor.AnyGateway.DigicertMpki.Client.Models
 {
     public class Attributes
     {
@@ -51,7 +51,7 @@ namespace Keyfactor.AnyGateway.DigiCertSym.Client.Models
 
         [JsonProperty("pseudonym", NullValueHandling = NullValueHandling.Ignore)] public string Pseudonym { get; set; }
 
-        [JsonProperty("san", NullValueHandling = NullValueHandling.Ignore)] public San San { get; set; }
+        [JsonProperty("san", NullValueHandling = NullValueHandling.Ignore)] public DigicertSan San { get; set; }
 
         [JsonProperty("serial_number", NullValueHandling = NullValueHandling.Ignore)] public string SerialNumber { get; set; }
 

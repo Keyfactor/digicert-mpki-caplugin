@@ -10,7 +10,7 @@
 ﻿using System;
 using Newtonsoft.Json;
 
-namespace Keyfactor.AnyGateway.DigiCertSym.Client.Models
+namespace Keyfactor.AnyGateway.DigicertMpki.Client.Models
 {
     public class CertificateDetails
     {
