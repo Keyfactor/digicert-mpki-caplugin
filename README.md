@@ -121,7 +121,7 @@ Enrollment Format Specifications Located [here](https://pki-ws-rest.symauth.com/
 ```
 
 4) **Sample Mapping Below**
-![](Images/SampleMapping.gif)
+![](../images/SampleMapping.gif)
 
 ---
 
