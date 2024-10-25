@@ -43,7 +43,6 @@ keytool -importkeystore -srckeystore KeyfactorMPki.jks -srcstoretype JKS -destke
 ```
 ---
 
-
 #### Enrollment Templates
 Since there are infinate number of profile configurations in DigiCertSym mPKI, these tempates are used to shell out the request for each profile and during the enrollment process will be replaced with data from the Enrollment request in Keyfactor.
 
@@ -101,4 +100,8 @@ Enrollment Format Specifications Located [here](https://pki-ws-rest.symauth.com/
 ## Certificate Template Creation Step
 
 TODO Certificate Template Creation Step is a required section
+
+## Gateway Registration
+
+TODO Gateway Registration is a required section
 
