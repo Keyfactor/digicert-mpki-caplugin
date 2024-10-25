@@ -195,7 +195,6 @@ At the time of writing, there was no API call available to get a list of Certifi
         * **ClientCertLocation** - Location on the Gateway Server File System of Client Certificate sample: C:\temp\myclientcert.pfx 
         * **ClientCertPassword** - Password for the SOAP Client Certificate. 
         * **EndpointAddress** - Endpoint address for SOAP Service sample: https://someurl/pki-ws/certificateManagementService. 
-        * **OuStartPoint** - Value of the OuStartPoint Name that digicert expects in the API. 
 
 2. TODO Certificate Template Creation Step is a required section
 

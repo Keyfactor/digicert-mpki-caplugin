@@ -31,10 +31,6 @@
                 {
                     "name": "EndpointAddress",
                     "description": "Endpoint address for SOAP Service sample: https://someurl/pki-ws/certificateManagementService."
-                },
-                {
-                    "name": "OuStartPoint",
-                    "description": "Value of the OuStartPoint Name that digicert expects in the API."
                 }
             ],
             "enrollment_config": [],
