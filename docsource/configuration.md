@@ -83,61 +83,20 @@ Enrollment Format Specifications Located [here](https://pki-ws-rest.symauth.com/
 
 ---
 
-### Getting the Certificate Authority ID in Aruba ClearPass Onboard
-
-#### Steps to Get the Certificate Authority ID
-
-1. **Log in to ClearPass Policy Manager**:
-   - Open your web browser and navigate to the ClearPass Policy Manager login page.
-   - Enter your credentials and log in.
-
-2. **Navigate to the Certificate Authorities Page**:
-   - Go to **Onboard** > **Certificate Authorities**.
-
-3. **Select the Certificate Authority**:
-   - Find the Certificate Authority you are interested in.
-   - Click the **Edit** button next to the Certificate Authority.
-
-4. **Locate the ID in the URL**:
-   - Once the edit page opens, look at the URL in your browser's address bar.
-   - The ID of the Certificate Authority will be part of the URL. It usually appears as a numeric value after `id=`.
-
-5. **Command Gateway Translation**:
-   - This will be used when setting up the Gateway as the CaId as explained in the Configuration section.
-
-#### Note
-At the time of writing, there was no API call available to get a list of Certificate Authorities in ClearPass Onboard. Therefore, this method of extracting the ID from the URL was the only known way to obtain it.
-
----
-
-### Aruba ClearPass Onboard Trust Chain Bundle Download
+### Digicert Trust Chain Bundle Download
 
 #### Steps to Download a Trust Chain Bundle
 
-1. **Log in to ClearPass Policy Manager**:
-   - Open your web browser and navigate to the ClearPass Policy Manager login page.
-   - Enter your credentials and log in.
+1. **Log in to Digicert MPKI Manager**:
+   - Open your web browser and navigate to the Digicert MPKI URL.
+   - Enter your pin and log in.
 
-2. **Navigate to the Certificate Authority Trust Chain Page**:
-   - Go to **Onboard** > **Certificate Authorities**.
-   - Click on the appropriate **Certificate Authority**.
-   - Click the **Trust Chain** link.
+2. **Navigate to the Manage CAs Menu**:
+   - Click on Gear at the bottom of page.
+   - Select **Manage CAs**.
 
 3. **Download the Trust Chain Bundle**:
-   - Click the **Download Bundle** link on the Certificate Authority Trust Chain page.
-   - The **Export Certificate** form will open.
-   - In the **Format** row, choose the certificate format.
-   - Follow the prompts to download the trust chain bundle.
-
-4. **Save the Bundle**:
-   - Save the downloaded bundle to a secure location on your computer.
-   
-5. **Using The Intermediate Certificate**:
-   - Extract the Intermediate Certificate from the Bundle.  This will be the certificate used when setting up the CA on the Gateway.
-
-## Gateway Registration
-
-Each defined Certificate Authority in the AnyCA Gateway REST can support one issuing certificate authority. Since Aruba ClearPass Onboard has multiple available Certificate Authorities, if you require certificate enrollment from multiple Aruba ClearPass Certificate Authorities, you must define multiple Certificate Authorities in the AnyCA Gateway REST. This will manifest in Command as one Aruba ClearPass CA per defined Certificate Authority.
+   - You will see the root and intermediate certificates available for download.
 
 ## Certificate Template Creation Step
 
