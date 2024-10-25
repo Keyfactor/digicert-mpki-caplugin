@@ -391,7 +391,7 @@ namespace Keyfactor.AnyGateway.DigicertMpki
                     _logger.LogTrace($"upn: {upKp}");
 
                     //Multiple UPNs not supported by Digicert so take the first one in the list
-                    UserPrincipalName up = new UserPrincipalName { Id = sanAttributes[Tuple.Create(productInfo.ProductID, "otherNameUPN")], Value = upKp.FirstOrDefault() };
+                    UserPrincipalName up = new UserPrincipalName { Id = sanAttributes[Tuple.Create(productInfo.ProductID, "user_principal_name")], Value = upKp.FirstOrDefault() };
                     upList.Add(up);
                     sn.UserPrincipalName = upList;
                 }

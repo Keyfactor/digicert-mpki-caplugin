@@ -372,15 +372,7 @@ namespace Keyfactor.Extensions.CAPlugin.DigicertMpki
                     Hidden = false,
                     DefaultValue = "",
                     Type = "String"
-                },
-                [Constants.OuStartPoint] = new PropertyConfigInfo()
-                {
-                    Comments = "Value of the OuStartPoint Name that digicert expects in the API.",
-                    Hidden = false,
-                    DefaultValue = 0,
-                    Type = "Number"
                 }
-
             };
         }
 
