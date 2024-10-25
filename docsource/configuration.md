@@ -40,7 +40,7 @@ keytool -import -trustcacerts -alias pki_ca -file SYMC_Test_Drive_RA_Intermediat
 keytool -import -trustcacerts -alias root -file SYMC_Managed_PKI_Infrastructure_Test_Drive_Root.cer -keystore KeyfactorMPki2 -storepass SomePassword
 
 keytool -importkeystore -srckeystore KeyfactorMPki.jks -srcstoretype JKS -destkeystore KeyfactorMPki2.pfx -deststoretype PKCS12
-
+```
 ---
 
 
@@ -76,7 +76,6 @@ Enrollment Format Specifications Located [here](https://pki-ws-rest.symauth.com/
 		"organization_name": "CSR|O"
 	}
 }
-```
 
 4) **Sample Mapping Below**
 ![](Images/SampleMapping.gif)
