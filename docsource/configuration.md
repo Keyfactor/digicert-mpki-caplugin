@@ -76,6 +76,7 @@ Enrollment Format Specifications Located [here](https://pki-ws-rest.symauth.com/
 		"organization_name": "CSR|O"
 	}
 }
+```
 
 4) **Sample Mapping Below**
 ![](Images/SampleMapping.gif)
