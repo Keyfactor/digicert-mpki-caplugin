@@ -91,9 +91,9 @@ Since there are infinate number of profile configurations in DigiCertSym mPKI, t
 
 These tempates files must be copied into the same directory as the Gateway binaries and saved as a JSON file with the same name outlined in the tempates section above.
 
-Sample Enrollment Template is [here](https://github.com/Keyfactor/digicertsym-cagateway/raw/main/FAA-StandardRequest.json)
+Sample Enrollment Template is [here](https://github.com/Keyfactor/digicert-mpki-caplugin/blob/main/FAA-StandardRequest.json)
 
-Enrollment Format Specifications Located [here](https://pki-ws-rest.symauth.com/mpki/docs/index.html) and [here](https://pki-ws-rest.symauth.com/mpki/docs/index.html)
+Enrollment Format Specifications Located [here](https://pki-ws-rest.symauth.com/mpki/docs/index.html)
 
 1) **EnrollmentParam** - Below is a sample Enrollment Template where anything Prefixed with "EnrollmentParam|FieldName" will be replaced with an enrollment field value from the Keyfactor portal during enrollment. 
 2) **CSR|RAW** - Below is a sample Enrollment Template where anything Prefixed with "CSR|RAW" will be replaced with the raw CSR content from the enrollment request from Keyfactor Portal. 
@@ -121,24 +121,9 @@ Enrollment Format Specifications Located [here](https://pki-ws-rest.symauth.com/
 ```
 
 4) **Sample Mapping Below**
-![](../images/SampleMapping.gif)
+![](/images/SampleMapping.gif)
 
 ---
-
-### Digicert Trust Chain Bundle Download
-
-#### Steps to Download a Trust Chain Bundle
-
-1. **Log in to Digicert MPKI Manager**:
-   - Open your web browser and navigate to the Digicert MPKI URL.
-   - Enter your pin and log in.
-
-2. **Navigate to the Manage CAs Menu**:
-   - Click on Gear at the bottom of page.
-   - Select **Manage CAs**.
-
-3. **Download the Trust Chain Bundle**:
-   - You will see the root and intermediate certificates available for download.
 
 ## Installation
 
@@ -164,7 +149,21 @@ Enrollment Format Specifications Located [here](https://pki-ws-rest.symauth.com/
 
     * **Gateway Registration**
 
-        TODO Gateway Registration is a required section
+	 	**Digicert Trust Chain Bundle Download**
+		
+		**Steps to Download a Trust Chain Bundle**
+		
+		1. **Log in to Digicert MPKI Manager**:
+		   - Open your web browser and navigate to the Digicert MPKI URL.
+		   - Enter your pin and log in.
+		
+		2. **Navigate to the Manage CAs Menu**:
+		   - Click on Gear at the bottom of page.
+		   - Select **Manage CAs**.
+		
+		3. **Download the Trust Chain Bundle**:
+		   - You will see the root and intermediate certificates available for download.
+
 
     * **CA Connection**
 
