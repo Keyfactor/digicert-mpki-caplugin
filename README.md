@@ -125,21 +125,6 @@ Enrollment Format Specifications Located [here](https://pki-ws-rest.symauth.com/
 
 ---
 
-### Digicert Trust Chain Bundle Download
-
-#### Steps to Download a Trust Chain Bundle
-
-1. **Log in to Digicert MPKI Manager**:
-   - Open your web browser and navigate to the Digicert MPKI URL.
-   - Enter your pin and log in.
-
-2. **Navigate to the Manage CAs Menu**:
-   - Click on Gear at the bottom of page.
-   - Select **Manage CAs**.
-
-3. **Download the Trust Chain Bundle**:
-   - You will see the root and intermediate certificates available for download.
-
 ## Installation
 
 1. Install the AnyCA Gateway REST per the [official Keyfactor documentation](https://software.keyfactor.com/Guides/AnyCAGatewayREST/Content/AnyCAGatewayREST/InstallIntroduction.htm).
@@ -164,7 +149,20 @@ Enrollment Format Specifications Located [here](https://pki-ws-rest.symauth.com/
 
     * **Gateway Registration**
 
-        TODO Gateway Registration is a required section
+**Digicert Trust Chain Bundle Download**
+
+**Steps to Download a Trust Chain Bundle**
+
+1. **Log in to Digicert MPKI Manager**:
+   - Open your web browser and navigate to the Digicert MPKI URL.
+   - Enter your pin and log in.
+
+2. **Navigate to the Manage CAs Menu**:
+   - Click on Gear at the bottom of page.
+   - Select **Manage CAs**.
+
+3. **Download the Trust Chain Bundle**:
+   - You will see the root and intermediate certificates available for download.
 
     * **CA Connection**
 
