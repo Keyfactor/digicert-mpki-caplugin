@@ -84,47 +84,6 @@ keytool -import -trustcacerts -alias root -file SYMC_Managed_PKI_Infrastructure_
 
 keytool -importkeystore -srckeystore KeyfactorMPki.jks -srcstoretype JKS -destkeystore KeyfactorMPki2.pfx -deststoretype PKCS12
 ```
----
-
-#### Enrollment Templates
-Since there are infinate number of profile configurations in DigiCertSym mPKI, these tempates are used to shell out the request for each profile and during the enrollment process will be replaced with data from the Enrollment request in Keyfactor.
-
-These tempates files must be copied into the same directory as the Gateway binaries and saved as a JSON file with the same name outlined in the tempates section above.
-
-Sample Enrollment Template is [here](https://github.com/Keyfactor/digicertsym-cagateway/raw/main/FAA-StandardRequest.json)
-
-Enrollment Format Specifications Located [here](https://pki-ws-rest.symauth.com/mpki/docs/index.html) and [here](https://pki-ws-rest.symauth.com/mpki/docs/index.html)
-
-1) **EnrollmentParam** - Below is a sample Enrollment Template where anything Prefixed with "EnrollmentParam|FieldName" will be replaced with an enrollment field value from the Keyfactor portal during enrollment. 
-2) **CSR|RAW** - Below is a sample Enrollment Template where anything Prefixed with "CSR|RAW" will be replaced with the raw CSR content from the enrollment request from Keyfactor Portal. 
-3) **CSR|CSRContent** - Below is a sample Enrollment Template where anything Prefixed with "CSR|CSRContent" will be replaced with the CSR content from the enrollment request from Keyfactor Portal. 
-
-```
-{
-	"profile": {
-		"id": "2.16.840.1.113733.1.16.1.5.2.5.1.1280209757"
-	},
-	"seat": {
-		"seat_id": "EnrollmentParam|Seat"
-	},
-	"csr": "CSR|RAW",
-	"validity": {
-		"unit": "years",
-		"duration": "Numeric|EnrollmentParam|Validity (Years)|Numeric"
-	},
-	"attributes": {
-		"common_name": "CSR|CN",
-		"country": "CSR|C",
-		"organization_name": "CSR|O"
-	}
-}
-```
-
-4) **Sample Mapping Below**
-![](../images/SampleMapping.gif)
-
----
-
 ### Digicert Trust Chain Bundle Download
 
 #### Steps to Download a Trust Chain Bundle
@@ -176,9 +135,45 @@ Enrollment Format Specifications Located [here](https://pki-ws-rest.symauth.com/
         * **ClientCertPassword** - Password for the SOAP Client Certificate. 
         * **EndpointAddress** - Endpoint address for SOAP Service sample: https://someurl/pki-ws/certificateManagementService. 
 
-2. TODO Certificate Template Creation Step is a required section
+2. Certificate Template Creation
 
-3. Follow the [official Keyfactor documentation](https://software.keyfactor.com/Guides/AnyCAGatewayREST/Content/AnyCAGatewayREST/AddCA-Keyfactor.htm) to add each defined Certificate Authority to Keyfactor Command and import the newly defined Certificate Templates.
+	Since there are infinate number of profile configurations in DigiCertSym mPKI, these tempates are used to shell out the request for each profile and during the enrollment process will be replaced with data from the Enrollment request in Keyfactor.
+	
+	These tempates files must be copied into the same directory as the Gateway binaries and saved as a JSON file with the same name outlined in the tempates section above.
+	
+	Sample Enrollment Template is [here](https://github.com/Keyfactor/digicert-mpki-caplugin/blob/main/FAA-StandardRequest.json)
+	
+	Enrollment Format Specifications Located [here](https://pki-ws-rest.symauth.com/mpki/docs/index.html)
+	
+	1) **EnrollmentParam** - Below is a sample Enrollment Template where anything Prefixed with "EnrollmentParam|FieldName" will be replaced with an enrollment field value from the Keyfactor portal during enrollment. 
+	2) **CSR|RAW** - Below is a sample Enrollment Template where anything Prefixed with "CSR|RAW" will be replaced with the raw CSR content from the enrollment request from Keyfactor Portal. 
+	3) **CSR|CSRContent** - Below is a sample Enrollment Template where anything Prefixed with "CSR|CSRContent" will be replaced with the CSR content from the enrollment request from Keyfactor Portal. 
+	
+	```
+	{
+		"profile": {
+			"id": "2.16.840.1.113733.1.16.1.5.2.5.1.1280209757"
+		},
+		"seat": {
+			"seat_id": "EnrollmentParam|Seat"
+		},
+		"csr": "CSR|RAW",
+		"validity": {
+			"unit": "years",
+			"duration": "Numeric|EnrollmentParam|Validity (Years)|Numeric"
+		},
+		"attributes": {
+			"common_name": "CSR|CN",
+			"country": "CSR|C",
+			"organization_name": "CSR|O"
+		}
+	}
+	```
+	
+	4) **Sample Mapping Below**
+	![](/images/SampleMapping.gif)
+
+4. Follow the [official Keyfactor documentation](https://software.keyfactor.com/Guides/AnyCAGatewayREST/Content/AnyCAGatewayREST/AddCA-Keyfactor.htm) to add each defined Certificate Authority to Keyfactor Command and import the newly defined Certificate Templates.
 
 
 
