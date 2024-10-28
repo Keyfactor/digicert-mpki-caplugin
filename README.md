@@ -149,7 +149,8 @@ Enrollment Format Specifications Located [here](https://pki-ws-rest.symauth.com/
 
     * **Gateway Registration**
 
-	**Digicert Trust Chain Bundle Download**
+
+ 	**Digicert Trust Chain Bundle Download**
 	
 	**Steps to Download a Trust Chain Bundle**
 	
@@ -163,6 +164,8 @@ Enrollment Format Specifications Located [here](https://pki-ws-rest.symauth.com/
 	
 	3. **Download the Trust Chain Bundle**:
 	   - You will see the root and intermediate certificates available for download.
+
+
 
     * **CA Connection**
 
