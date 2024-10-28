@@ -149,22 +149,20 @@ Enrollment Format Specifications Located [here](https://pki-ws-rest.symauth.com/
 
     * **Gateway Registration**
 
-
- 	**Digicert Trust Chain Bundle Download**
-	
-	**Steps to Download a Trust Chain Bundle**
-	
-	1. **Log in to Digicert MPKI Manager**:
-	   - Open your web browser and navigate to the Digicert MPKI URL.
-	   - Enter your pin and log in.
-	
-	2. **Navigate to the Manage CAs Menu**:
-	   - Click on Gear at the bottom of page.
-	   - Select **Manage CAs**.
-	
-	3. **Download the Trust Chain Bundle**:
-	   - You will see the root and intermediate certificates available for download.
-
+	 	**Digicert Trust Chain Bundle Download**
+		
+		**Steps to Download a Trust Chain Bundle**
+		
+		1. **Log in to Digicert MPKI Manager**:
+		   - Open your web browser and navigate to the Digicert MPKI URL.
+		   - Enter your pin and log in.
+		
+		2. **Navigate to the Manage CAs Menu**:
+		   - Click on Gear at the bottom of page.
+		   - Select **Manage CAs**.
+		
+		3. **Download the Trust Chain Bundle**:
+		   - You will see the root and intermediate certificates available for download.
 
 
     * **CA Connection**
