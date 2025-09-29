@@ -13,5 +13,6 @@
         public static string EmailConstName = "EmailConstName";
         public static string UpnConstName = "UpnConstName";
         public static string OuStartPoint = "OuStartPoint";
+        public static string Enabled = "Enabled";
     }
 }

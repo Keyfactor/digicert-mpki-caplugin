@@ -43,6 +43,13 @@ namespace Keyfactor.Extensions.CAPlugin.DigicertMpki
             _config = DeserializeConfig(configProvider.CAConnectionData);
             _logger.MethodEntry();
 
+            if (!_config.Enabled)
+            {
+                _logger.LogWarning($"The CA is currently in the Disabled state. It must be Enabled to perform operations.");
+                _logger.MethodExit(LogLevel.Trace);
+                return;
+            }
+
             _requestManager = new RequestManager(_logger, _config);
             _client = new DigiCertSymClient(_config, _logger);
 
@@ -297,6 +304,19 @@ namespace Keyfactor.Extensions.CAPlugin.DigicertMpki
 
         public async Task ValidateCAConnectionInfo(Dictionary<string, object> connectionInfo)
         {
+            try
+            {
+                if (!(bool)connectionInfo[Constants.Enabled])
+                {
+                    _logger.LogWarning($"The CA is currently in the Disabled state. It must be Enabled to perform operations. Skipping validation...");
+                    _logger.MethodExit(LogLevel.Trace);
+                    return;
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError($"Exception: {LogHandler.FlattenException(ex)}");
+            }
             List<string> errors = ValidateConnectionInfo(connectionInfo);
             if (errors.Any())
                 ThrowValidationException(errors);
@@ -372,6 +392,13 @@ namespace Keyfactor.Extensions.CAPlugin.DigicertMpki
                     Hidden = false,
                     DefaultValue = "",
                     Type = "String"
+                },
+                [Constants.Enabled] = new PropertyConfigInfo()
+                {
+                    Comments = "Flag to Enable or Disable gateway functionality. Disabling is primarily used to allow creation of the CA prior to configuration information being available.",
+                    Hidden = false,
+                    DefaultValue = true,
+                    Type = "Boolean"
                 }
             };
         }

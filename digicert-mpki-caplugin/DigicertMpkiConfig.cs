@@ -17,5 +17,6 @@
         public string EmailConstName { get; set; }
         public string UpnConstName { get; set; }
         public int OuStartPoint { get; set; }
+        public bool Enabled { get; set; } = true;
     }
 }
