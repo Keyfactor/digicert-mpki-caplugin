@@ -178,6 +178,7 @@ Enrollment Format Specifications Located [here](https://pki-ws-rest.symauth.com/
         * **ClientCertLocation** - Location on the Gateway Server File System of Client Certificate sample: C:\temp\myclientcert.pfx 
         * **ClientCertPassword** - Password for the SOAP Client Certificate. 
         * **EndpointAddress** - Endpoint address for SOAP Service sample: https://someurl/pki-ws/certificateManagementService. 
+        * **Enabled** - Flag to Enable or Disable gateway functionality. Disabling is primarily used to allow creation of the CA prior to configuration information being available. 
 
 2. TODO Certificate Template Creation Step is a required section
 
