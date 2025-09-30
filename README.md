@@ -146,13 +146,16 @@ Enrollment Format Specifications Located [here](https://pki-ws-rest.symauth.com/
 
 2. On the server hosting the AnyCA Gateway REST, download and unzip the latest [Digicert Mpki   Gateway AnyCA Gateway REST plugin](https://github.com/Keyfactor/digicert-mpki-caplugin/releases/latest) from GitHub.
 
-3. Copy the unzipped directory (usually called `net6.0`) to the Extensions directory:
+3. Copy the unzipped directory (usually called `net6.0` or `net8.0`) to the Extensions directory:
+
 
     ```shell
+    Depending on your AnyCA Gateway REST version, copy the unzipped directory to one of the following locations:
     Program Files\Keyfactor\AnyCA Gateway\AnyGatewayREST\net6.0\Extensions
+    Program Files\Keyfactor\AnyCA Gateway\AnyGatewayREST\net8.0\Extensions
     ```
 
-    > The directory containing the Digicert Mpki   Gateway AnyCA Gateway REST plugin DLLs (`net6.0`) can be named anything, as long as it is unique within the `Extensions` directory.
+    > The directory containing the Digicert Mpki   Gateway AnyCA Gateway REST plugin DLLs (`net6.0` or `net8.0`) can be named anything, as long as it is unique within the `Extensions` directory.
 
 4. Restart the AnyCA Gateway REST service.
 
@@ -175,6 +178,7 @@ Enrollment Format Specifications Located [here](https://pki-ws-rest.symauth.com/
         * **ClientCertLocation** - Location on the Gateway Server File System of Client Certificate sample: C:\temp\myclientcert.pfx 
         * **ClientCertPassword** - Password for the SOAP Client Certificate. 
         * **EndpointAddress** - Endpoint address for SOAP Service sample: https://someurl/pki-ws/certificateManagementService. 
+        * **Enabled** - Flag to Enable or Disable gateway functionality. Disabling is primarily used to allow creation of the CA prior to configuration information being available. 
 
 2. TODO Certificate Template Creation Step is a required section
 
