@@ -1,4 +1,4 @@
-﻿namespace Keyfactor.Extensions.CAPlugin.DigicertMpki
+namespace Keyfactor.Extensions.CAPlugin.DigicertMpki
 {
     public class DigicertMpkiConfig
     {
@@ -17,5 +17,6 @@
         public string EmailConstName { get; set; }
         public string UpnConstName { get; set; }
         public int OuStartPoint { get; set; }
+        public bool Enabled { get; set; } = true;
     }
 }
