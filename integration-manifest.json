@@ -1,5 +1,5 @@
 {
-    "$schema": "https://keyfactor.github.io/integration-manifest-schema.json",
+    "$schema": "https://keyfactor.github.io/v2/integration-manifest-schema.json",
     "integration_type": "anyca-plugin",
     "name": "Digicert Mpki AnyCA REST Gateway Plugin",
     "status": "pilot",
@@ -8,7 +8,8 @@
     "update_catalog": true,
     "description": "Digicert Mpki plugin for the AnyCA REST Gateway framework",
     "gateway_framework": "24.2.0",
-    "release_dir": "digicert-mpki-caplugin/bin/Release/net6.0",
+    "release_dir": "digicert-mpki-caplugin/bin/Release",
+    "release_project": "digicert-mpki-caplugin/digicert-mpki-caplugin.csproj",
     "about": {
         "carest": {
             "ca_plugin_config": [
