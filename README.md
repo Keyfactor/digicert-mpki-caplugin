@@ -146,13 +146,16 @@ Enrollment Format Specifications Located [here](https://pki-ws-rest.symauth.com/
 
 2. On the server hosting the AnyCA Gateway REST, download and unzip the latest [Digicert Mpki   Gateway AnyCA Gateway REST plugin](https://github.com/Keyfactor/digicert-mpki-caplugin/releases/latest) from GitHub.
 
-3. Copy the unzipped directory (usually called `net6.0`) to the Extensions directory:
+3. Copy the unzipped directory (usually called `net6.0` or `net8.0`) to the Extensions directory:
+
 
     ```shell
+    Depending on your AnyCA Gateway REST version, copy the unzipped directory to one of the following locations:
     Program Files\Keyfactor\AnyCA Gateway\AnyGatewayREST\net6.0\Extensions
+    Program Files\Keyfactor\AnyCA Gateway\AnyGatewayREST\net8.0\Extensions
     ```
 
-    > The directory containing the Digicert Mpki   Gateway AnyCA Gateway REST plugin DLLs (`net6.0`) can be named anything, as long as it is unique within the `Extensions` directory.
+    > The directory containing the Digicert Mpki   Gateway AnyCA Gateway REST plugin DLLs (`net6.0` or `net8.0`) can be named anything, as long as it is unique within the `Extensions` directory.
 
 4. Restart the AnyCA Gateway REST service.
 
@@ -170,246 +173,19 @@ Enrollment Format Specifications Located [here](https://pki-ws-rest.symauth.com/
 
         Populate using the configuration fields collected in the [requirements](#requirements) section.
 
-        * **ApiKey** - Digicert mPKI REST API Key. Can also be set via `DIGICERT_API_KEY` environment variable.
-        * **DigiCertSymUrl** - Base Url for Digicert mPKI REST API such as https://someurl/mpki/api/v1
-        * **ClientCertLocation** - Path to the client certificate PFX file.
-            * Windows: `C:\temp\myclientcert.pfx`
-            * Linux/Container: `/secrets/client.pfx`
-            * Can alternatively set `DIGICERT_CLIENT_CERT_BASE64` environment variable with base64-encoded PFX.
-        * **ClientCertPassword** - Password for the SOAP Client Certificate. Can also be set via `DIGICERT_CLIENT_CERT_PASSWORD` environment variable.
-        * **EndpointAddress** - Endpoint address for SOAP Service sample: https://someurl/pki-ws/certificateManagementService.
-        * **TemplateDirectory** - (Optional) Directory containing enrollment template JSON files. Supports absolute paths for container volume mounts (e.g., `/templates`). If not specified, defaults to the plugin assembly directory.
-        * **TemplatesJson** - (Optional) JSON array containing all enrollment templates inline. When provided, templates are loaded from this config value instead of files. This simplifies container deployments by eliminating the need for volume mounts. Takes precedence over `TemplateDirectory`. See [Inline Templates Configuration](#inline-templates-configuration) below.
+        * **ApiKey** - Digicert mPKI REST API Key. Can also be set via DIGICERT_API_KEY environment variable. 
+        * **DigiCertSymUrl** - Base Url for Digicert mPKI REST API such as https://someurl/mpki/api/v1 
+        * **ClientCertLocation** - Path to the client certificate PFX file. Windows: C:\temp\myclientcert.pfx, Linux/Container: /secrets/client.pfx. Can alternatively set DIGICERT_CLIENT_CERT_BASE64 environment variable with base64-encoded PFX. 
+        * **ClientCertPassword** - Password for the SOAP Client Certificate. Can also be set via DIGICERT_CLIENT_CERT_PASSWORD environment variable. 
+        * **EndpointAddress** - Endpoint address for SOAP Service sample: https://someurl/pki-ws/certificateManagementService. 
+        * **TemplateDirectory** - Optional: Directory containing enrollment template JSON files. Supports absolute paths for container volume mounts (e.g., /templates or /app/templates). If not specified and TemplatesJson is not provided, defaults to the plugin assembly directory. 
+        * **TemplatesJson** - Optional: JSON array of enrollment templates. When provided, templates are loaded from this config instead of files. Ideal for container deployments. Format: [{"profile":{"id":"..."},"csr":"CSR|RAW",...}]. Takes precedence over TemplateDirectory. 
 
 2. TODO Certificate Template Creation Step is a required section
 
 3. Follow the [official Keyfactor documentation](https://software.keyfactor.com/Guides/AnyCAGatewayREST/Content/AnyCAGatewayREST/AddCA-Keyfactor.htm) to add each defined Certificate Authority to Keyfactor Command and import the newly defined Certificate Templates.
 
 
-
-## Inline Templates Configuration
-
-For simplified deployments (especially containers), you can embed all enrollment templates directly in the CA Connection configuration using the `TemplatesJson` field. This eliminates the need for template file mounts.
-
-### Format
-
-The `TemplatesJson` value should be a JSON array containing all enrollment templates:
-
-```json
-[
-  {
-    "profile": {
-      "id": "2.16.840.1.113733.1.16.1.5.2.5.1.1280209757"
-    },
-    "csr": "CSR|RAW",
-    "seat": {
-      "seat_id": "EnrollmentParam|Seat"
-    },
-    "validity": {
-      "unit": "years",
-      "duration": "Numeric|EnrollmentParam|Validity (Years)|Numeric"
-    },
-    "attributes": {
-      "common_name": "CSR|CN",
-      "country": "CSR|C",
-      "organization_name": "CSR|O"
-    }
-  },
-  {
-    "profile": {
-      "id": "2.16.840.1.101.2.1.11.39"
-    },
-    "csr": "CSR|RAW",
-    "validity": {
-      "years": 1
-    },
-    "attributes": {
-      "common_name": "CSR|CN",
-      "email": "EnrollmentParam|Email"
-    }
-  }
-]
-```
-
-### Precedence
-
-When both `TemplatesJson` and `TemplateDirectory` are configured:
-- `TemplatesJson` takes precedence and templates are loaded from the inline JSON
-- `TemplateDirectory` is ignored
-
-### Advantages for Container Deployments
-
-Using `TemplatesJson` instead of file-based templates provides several benefits:
-- **No volume mounts required**: Templates are stored in the CA Connection configuration
-- **Simpler Kubernetes deployments**: No need for ConfigMaps for template files
-- **Single source of truth**: All configuration in one place
-- **Easier updates**: Change templates through the AnyCA Gateway REST portal without redeploying
-
-## Container Deployment
-
-This plugin supports deployment in containerized environments (Docker, Kubernetes). The following features enable container-native configuration patterns:
-
-### Environment Variables
-
-Sensitive configuration values can be injected via environment variables (config file values take precedence when both are provided):
-
-| Environment Variable | Description | Config Equivalent |
-|---------------------|-------------|-------------------|
-| `DIGICERT_API_KEY` | DigiCert mPKI REST API Key | ApiKey |
-| `DIGICERT_CLIENT_CERT_PASSWORD` | Password for the SOAP client certificate | ClientCertPassword |
-| `DIGICERT_CLIENT_CERT_BASE64` | Base64-encoded PFX certificate (alternative to file path) | ClientCertLocation |
-
-### Volume Mounts
-
-For container deployments, you can mount certificates and templates from external sources:
-
-- **Client Certificate**: Mount the PFX file and set `ClientCertLocation` to the mount path (e.g., `/secrets/client.pfx`)
-- **Enrollment Templates**: Mount template JSON files and set `TemplateDirectory` to the mount path (e.g., `/templates`)
-
-### Docker Example
-
-```dockerfile
-FROM mcr.microsoft.com/dotnet/aspnet:6.0
-
-# Copy AnyCA Gateway REST and plugin
-COPY ./gateway /app
-COPY ./templates /app/templates
-
-WORKDIR /app
-
-# Environment variables for secrets (alternatively use Docker secrets)
-ENV DIGICERT_API_KEY=""
-ENV DIGICERT_CLIENT_CERT_PASSWORD=""
-ENV DIGICERT_CLIENT_CERT_BASE64=""
-
-ENTRYPOINT ["dotnet", "Keyfactor.AnyGateway.dll"]
-```
-
-### Docker Compose Example
-
-```yaml
-version: '3.8'
-services:
-  anyca-gateway:
-    image: your-registry/anyca-gateway:latest
-    environment:
-      - DIGICERT_API_KEY=${DIGICERT_API_KEY}
-      - DIGICERT_CLIENT_CERT_PASSWORD=${DIGICERT_CLIENT_CERT_PASSWORD}
-    volumes:
-      - ./secrets/client.pfx:/secrets/client.pfx:ro
-      - ./templates:/app/templates:ro
-    ports:
-      - "5000:5000"
-```
-
-### Kubernetes Example
-
-#### Create Secrets
-
-```bash
-# Create secret for client certificate
-kubectl create secret generic digicert-client-cert \
-  --from-file=client.pfx=./client.pfx
-
-# Create secret for sensitive values
-kubectl create secret generic digicert-credentials \
-  --from-literal=api-key='your-api-key' \
-  --from-literal=cert-password='your-cert-password'
-```
-
-#### Create ConfigMap for Templates
-
-```bash
-kubectl create configmap digicert-templates \
-  --from-file=./templates/
-```
-
-#### Deployment
-
-```yaml
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: anyca-gateway
-spec:
-  replicas: 1
-  selector:
-    matchLabels:
-      app: anyca-gateway
-  template:
-    metadata:
-      labels:
-        app: anyca-gateway
-    spec:
-      containers:
-      - name: anyca-gateway
-        image: your-registry/anyca-gateway:latest
-        env:
-        - name: DIGICERT_API_KEY
-          valueFrom:
-            secretKeyRef:
-              name: digicert-credentials
-              key: api-key
-        - name: DIGICERT_CLIENT_CERT_PASSWORD
-          valueFrom:
-            secretKeyRef:
-              name: digicert-credentials
-              key: cert-password
-        volumeMounts:
-        - name: client-cert
-          mountPath: /secrets
-          readOnly: true
-        - name: templates
-          mountPath: /app/templates
-          readOnly: true
-      volumes:
-      - name: client-cert
-        secret:
-          secretName: digicert-client-cert
-      - name: templates
-        configMap:
-          name: digicert-templates
-```
-
-#### CA Connection Configuration for Kubernetes
-
-When configuring the CA Connection in the AnyCA Gateway REST portal for Kubernetes deployments:
-
-| Field | Value |
-|-------|-------|
-| ApiKey | (leave empty - using environment variable) |
-| DigiCertSymUrl | https://your-digicert-url/mpki/api/v1 |
-| ClientCertLocation | /secrets/client.pfx |
-| ClientCertPassword | (leave empty - using environment variable) |
-| EndpointAddress | https://your-digicert-url/pki-ws/certificateManagementService |
-| TemplateDirectory | /app/templates (if using file mounts) |
-| TemplatesJson | `[{"profile":{"id":"..."},...}]` (alternative to TemplateDirectory - recommended for simpler deployments) |
-
-### Using Base64-Encoded Certificate
-
-As an alternative to mounting the certificate file, you can provide the certificate as a base64-encoded string via environment variable:
-
-```bash
-# Encode the certificate
-export DIGICERT_CLIENT_CERT_BASE64=$(base64 -w0 client.pfx)
-
-# In Kubernetes, create the secret
-kubectl create secret generic digicert-cert-base64 \
-  --from-literal=cert-base64="$(base64 -w0 client.pfx)"
-```
-
-Then reference in your deployment:
-
-```yaml
-env:
-- name: DIGICERT_CLIENT_CERT_BASE64
-  valueFrom:
-    secretKeyRef:
-      name: digicert-cert-base64
-      key: cert-base64
-```
-
-When using base64-encoded certificate, you can leave `ClientCertLocation` empty in the CA Connection configuration.
 
 ## License
 

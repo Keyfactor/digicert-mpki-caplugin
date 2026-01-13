@@ -14,7 +14,7 @@
             "ca_plugin_config": [
                 {
                     "name": "ApiKey",
-                    "description": "Digicert mPKI Rest API Key"
+                    "description": "Digicert mPKI REST API Key. Can also be set via DIGICERT_API_KEY environment variable."
                 },
                 {
                     "name": "DigiCertSymUrl",
@@ -22,15 +22,23 @@
                 },
                 {
                     "name": "ClientCertLocation",
-                    "description": "Location on the Gateway Server File System of Client Certificate sample: C:\\temp\\myclientcert.pfx"
+                    "description": "Path to the client certificate PFX file. Windows: C:\\temp\\myclientcert.pfx, Linux/Container: /secrets/client.pfx. Can alternatively set DIGICERT_CLIENT_CERT_BASE64 environment variable with base64-encoded PFX."
                 },
                 {
                     "name": "ClientCertPassword",
-                    "description": "Password for the SOAP Client Certificate."
+                    "description": "Password for the SOAP Client Certificate. Can also be set via DIGICERT_CLIENT_CERT_PASSWORD environment variable."
                 },
                 {
                     "name": "EndpointAddress",
                     "description": "Endpoint address for SOAP Service sample: https://someurl/pki-ws/certificateManagementService."
+                },
+                {
+                    "name": "TemplateDirectory",
+                    "description": "Optional: Directory containing enrollment template JSON files. Supports absolute paths for container volume mounts (e.g., /templates or /app/templates). If not specified and TemplatesJson is not provided, defaults to the plugin assembly directory."
+                },
+                {
+                    "name": "TemplatesJson",
+                    "description": "Optional: JSON array of enrollment templates. When provided, templates are loaded from this config instead of files. Ideal for container deployments. Format: [{\"profile\":{\"id\":\"...\"},\"csr\":\"CSR|RAW\",...}]. Takes precedence over TemplateDirectory."
                 }
             ],
             "enrollment_config": [],
