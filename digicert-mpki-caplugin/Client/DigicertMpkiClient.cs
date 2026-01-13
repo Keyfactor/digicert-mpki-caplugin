@@ -30,17 +30,20 @@ namespace Keyfactor.Extensions.CAPlugin.DigicertMpki.Client
         private string EndPointAddress { get; }
         private string ClientCertificateLocation { get; }
         private string ClientCertificatePassword { get; }
+        private string ClientCertificateBase64 { get; }
 
         public DigiCertSymClient(DigicertMpkiConfig config, ILogger logger)
         {
             try
             {
                 _logger = logger;
-                BaseUrl =new Uri(config.DigiCertSymUrl);
-                ApiKey=config.ApiKey;
-                ClientCertificateLocation=config.ClientCertLocation;
-                ClientCertificatePassword =config.ClientCertPassword;
+                BaseUrl = new Uri(config.DigiCertSymUrl);
+                ApiKey = config.ApiKey;
+                ClientCertificateLocation = config.ClientCertLocation;
+                ClientCertificatePassword = config.ClientCertPassword;
                 EndPointAddress = config.EndPointAddress;
+                // Check for base64 certificate from environment variable
+                ClientCertificateBase64 = Environment.GetEnvironmentVariable(Constants.EnvClientCertBase64);
                 RestClient = ConfigureRestClient();
             }
             catch (Exception e)
@@ -224,7 +227,7 @@ namespace Keyfactor.Extensions.CAPlugin.DigicertMpki.Client
                 bind.Security.Transport.ClientCredentialType = HttpClientCredentialType.Certificate;
                 var ep = new EndpointAddress(EndPointAddress);
                 var client = new certificateManagementOperationsClient(bind, ep);
-                var cert = new X509Certificate2(ClientCertificateLocation, ClientCertificatePassword);
+                var cert = LoadClientCertificate();
                 if (client.ClientCredentials != null)
                     client.ClientCredentials.ClientCertificate.Certificate = cert;
 
@@ -256,6 +259,39 @@ namespace Keyfactor.Extensions.CAPlugin.DigicertMpki.Client
                 _logger.LogError($"ConfigureRestClient Error Occurred {e.Message}");
                 throw;
             }
+        }
+
+        /// <summary>
+        /// Loads the SOAP client certificate from either a base64-encoded environment variable
+        /// or from a file path. Base64 environment variable takes precedence for container deployments.
+        /// </summary>
+        /// <returns>X509Certificate2 for SOAP authentication</returns>
+        private X509Certificate2 LoadClientCertificate()
+        {
+            // Check for base64 certificate from environment variable first (container deployment)
+            if (!string.IsNullOrEmpty(ClientCertificateBase64))
+            {
+                _logger.LogTrace("Loading client certificate from base64 environment variable");
+                try
+                {
+                    byte[] certBytes = Convert.FromBase64String(ClientCertificateBase64);
+                    return new X509Certificate2(certBytes, ClientCertificatePassword);
+                }
+                catch (Exception e)
+                {
+                    _logger.LogError($"Failed to load certificate from base64: {e.Message}");
+                    throw new InvalidOperationException("Failed to load client certificate from DIGICERT_CLIENT_CERT_BASE64 environment variable", e);
+                }
+            }
+
+            // Fall back to file path loading (traditional deployment)
+            if (string.IsNullOrEmpty(ClientCertificateLocation))
+            {
+                throw new InvalidOperationException("Client certificate not configured. Provide either ClientCertLocation in config or set DIGICERT_CLIENT_CERT_BASE64 environment variable.");
+            }
+
+            _logger.LogTrace($"Loading client certificate from file: {ClientCertificateLocation}");
+            return new X509Certificate2(ClientCertificateLocation, ClientCertificatePassword);
         }
 
         public static Dictionary<string, string> ExtractProfileIdsFromJson(string directoryPath)

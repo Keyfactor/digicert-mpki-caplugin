@@ -29,6 +29,7 @@ namespace Keyfactor.Extensions.CAPlugin.DigicertMpki
         private ICertificateDataReader _certificateDataReader;
         private RequestManager _requestManager;
         private DigiCertSymClient _client;
+        private TemplateProvider _templateProvider;
 
         private Dictionary<int, string> DCVTokens { get; } = new Dictionary<int, string>();
 
@@ -43,7 +44,8 @@ namespace Keyfactor.Extensions.CAPlugin.DigicertMpki
             _config = DeserializeConfig(configProvider.CAConnectionData);
             _logger.MethodEntry();
 
-            _requestManager = new RequestManager(_logger, _config);
+            _templateProvider = new TemplateProvider(_config, _logger);
+            _requestManager = new RequestManager(_logger, _config, _templateProvider);
             _client = new DigiCertSymClient(_config, _logger);
 
             _logger.MethodExit();
@@ -52,7 +54,43 @@ namespace Keyfactor.Extensions.CAPlugin.DigicertMpki
         private DigicertMpkiConfig DeserializeConfig(Dictionary<string, object> configData)
         {
             string rawConfig = JsonConvert.SerializeObject(configData);
-            return JsonConvert.DeserializeObject<DigicertMpkiConfig>(rawConfig);
+            var config = JsonConvert.DeserializeObject<DigicertMpkiConfig>(rawConfig);
+
+            // Apply environment variable fallbacks (config values take precedence)
+            config = ApplyEnvironmentVariableFallbacks(config);
+
+            return config;
+        }
+
+        /// <summary>
+        /// Applies environment variable values as fallbacks when config values are empty.
+        /// Config file values take precedence over environment variables.
+        /// </summary>
+        private DigicertMpkiConfig ApplyEnvironmentVariableFallbacks(DigicertMpkiConfig config)
+        {
+            // ApiKey fallback from DIGICERT_API_KEY
+            if (string.IsNullOrEmpty(config.ApiKey))
+            {
+                string envApiKey = Environment.GetEnvironmentVariable(Constants.EnvApiKey);
+                if (!string.IsNullOrEmpty(envApiKey))
+                {
+                    _logger.LogTrace("Using ApiKey from DIGICERT_API_KEY environment variable");
+                    config.ApiKey = envApiKey;
+                }
+            }
+
+            // ClientCertPassword fallback from DIGICERT_CLIENT_CERT_PASSWORD
+            if (string.IsNullOrEmpty(config.ClientCertPassword))
+            {
+                string envPassword = Environment.GetEnvironmentVariable(Constants.EnvClientCertPassword);
+                if (!string.IsNullOrEmpty(envPassword))
+                {
+                    _logger.LogTrace("Using ClientCertPassword from DIGICERT_CLIENT_CERT_PASSWORD environment variable");
+                    config.ClientCertPassword = envPassword;
+                }
+            }
+
+            return config;
         }
 
         public async Task<AnyCAPluginCertificate> GetSingleRecord(string caRequestID)
@@ -308,13 +346,65 @@ namespace Keyfactor.Extensions.CAPlugin.DigicertMpki
         {
             var errors = new List<string>();
 
-            CheckRequiredField(connectionInfo, Constants.DigiCertSymApiKey, "API Key", errors);
+            // Validate API Key - check config first, then environment variable fallback
+            string apiKey = GetConfigValueOrEnvFallback(connectionInfo, Constants.DigiCertSymApiKey, Constants.EnvApiKey);
+            if (string.IsNullOrWhiteSpace(apiKey))
+                errors.Add("API Key is required. Provide via config or DIGICERT_API_KEY environment variable.");
+
             CheckRequiredField(connectionInfo, Constants.DigiCertSymUrl, "Base URL", errors, url => !url.Contains("https"), "The Base URL needs https://");
             CheckRequiredField(connectionInfo, Constants.EndpointAddress, "SOAP Endpoint", errors, url => !url.Contains("https"), "The SOAP URL needs https://");
-            CheckRequiredField(connectionInfo, Constants.ClientCertLocation, "Client Certificate Location", errors);
-            CheckRequiredField(connectionInfo, Constants.ClientCertPassword, "Client Certificate Password", errors);
+
+            // Validate Client Certificate source - require either file path or base64 env var
+            string certLocation = connectionInfo.ContainsKey(Constants.ClientCertLocation) ? connectionInfo[Constants.ClientCertLocation]?.ToString() : string.Empty;
+            string certBase64 = Environment.GetEnvironmentVariable(Constants.EnvClientCertBase64);
+            if (string.IsNullOrWhiteSpace(certLocation) && string.IsNullOrWhiteSpace(certBase64))
+                errors.Add("Client Certificate is required. Provide ClientCertLocation in config or set DIGICERT_CLIENT_CERT_BASE64 environment variable.");
+
+            // Validate Client Certificate Password - check config first, then environment variable fallback
+            string certPassword = GetConfigValueOrEnvFallback(connectionInfo, Constants.ClientCertPassword, Constants.EnvClientCertPassword);
+            if (string.IsNullOrWhiteSpace(certPassword))
+                errors.Add("Client Certificate Password is required. Provide via config or DIGICERT_CLIENT_CERT_PASSWORD environment variable.");
+
+            // Validate Template Directory if provided
+            ValidateTemplateDirectory(connectionInfo, errors);
 
             return errors;
+        }
+
+        /// <summary>
+        /// Gets a config value with environment variable fallback.
+        /// </summary>
+        private string GetConfigValueOrEnvFallback(Dictionary<string, object> connectionInfo, string configKey, string envVarName)
+        {
+            string configValue = connectionInfo.ContainsKey(configKey) ? connectionInfo[configKey]?.ToString() : string.Empty;
+            if (!string.IsNullOrWhiteSpace(configValue))
+                return configValue;
+
+            return Environment.GetEnvironmentVariable(envVarName) ?? string.Empty;
+        }
+
+        /// <summary>
+        /// Validates the template directory if provided in config.
+        /// Fails fast if directory doesn't exist.
+        /// </summary>
+        private void ValidateTemplateDirectory(Dictionary<string, object> connectionInfo, List<string> errors)
+        {
+            if (!connectionInfo.ContainsKey(Constants.TemplateDirectory))
+                return;
+
+            string templateDir = connectionInfo[Constants.TemplateDirectory]?.ToString();
+            if (string.IsNullOrWhiteSpace(templateDir))
+                return;
+
+            // Convert relative path to absolute if needed
+            if (!Path.IsPathRooted(templateDir))
+            {
+                string basePath = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
+                templateDir = Path.Combine(basePath, templateDir);
+            }
+
+            if (!Directory.Exists(templateDir))
+                errors.Add($"Template directory does not exist: {templateDir}");
         }
 
         private void CheckRequiredField(Dictionary<string, object> connectionInfo, string key, string fieldName, List<string> errors, Func<string, bool> condition = null, string conditionMessage = null)
@@ -340,7 +430,7 @@ namespace Keyfactor.Extensions.CAPlugin.DigicertMpki
             {
                 [Constants.DigiCertSymApiKey] = new PropertyConfigInfo()
                 {
-                    Comments = "Digicert mPKI Rest API Key",
+                    Comments = "Digicert mPKI REST API Key. Can also be set via DIGICERT_API_KEY environment variable.",
                     Hidden = true,
                     DefaultValue = "",
                     Type = "String"
@@ -354,14 +444,14 @@ namespace Keyfactor.Extensions.CAPlugin.DigicertMpki
                 },
                 [Constants.ClientCertLocation] = new PropertyConfigInfo()
                 {
-                    Comments = "Location on the Gateway Server File System of Client Certificate sample: C:\\temp\\myclientcert.pfx",
+                    Comments = "Path to the client certificate PFX file. Windows: C:\\temp\\myclientcert.pfx, Linux/Container: /secrets/client.pfx. Can alternatively set DIGICERT_CLIENT_CERT_BASE64 environment variable with base64-encoded PFX.",
                     Hidden = false,
                     DefaultValue = "",
                     Type = "String"
                 },
                 [Constants.ClientCertPassword] = new PropertyConfigInfo()
                 {
-                    Comments = "Password for the SOAP Client Certificate.",
+                    Comments = "Password for the SOAP Client Certificate. Can also be set via DIGICERT_CLIENT_CERT_PASSWORD environment variable.",
                     Hidden = true,
                     DefaultValue = "",
                     Type = "String"
@@ -372,6 +462,20 @@ namespace Keyfactor.Extensions.CAPlugin.DigicertMpki
                     Hidden = false,
                     DefaultValue = "",
                     Type = "String"
+                },
+                [Constants.TemplateDirectory] = new PropertyConfigInfo()
+                {
+                    Comments = "Optional: Directory containing enrollment template JSON files. Supports absolute paths for container volume mounts (e.g., /templates or /app/templates). If not specified and TemplatesJson is not provided, defaults to the plugin assembly directory.",
+                    Hidden = false,
+                    DefaultValue = "",
+                    Type = "String"
+                },
+                [Constants.TemplatesJson] = new PropertyConfigInfo()
+                {
+                    Comments = "Optional: JSON array of enrollment templates. When provided, templates are loaded from this config instead of files. Ideal for container deployments. Format: [{\"profile\":{\"id\":\"...\"},\"csr\":\"CSR|RAW\",...}]. Takes precedence over TemplateDirectory.",
+                    Hidden = false,
+                    DefaultValue = "",
+                    Type = "String"
                 }
             };
         }
@@ -379,8 +483,17 @@ namespace Keyfactor.Extensions.CAPlugin.DigicertMpki
 
         public Dictionary<string, PropertyConfigInfo> GetTemplateParameterAnnotations()
         {
-            var path = GetExecutingPath();
-            var paramList = DigiCertSymClient.ExtractEnrollmentParamsFromJson(path);
+            // Use template provider if available, fall back to static method for backward compatibility
+            Dictionary<string, string> paramList;
+            if (_templateProvider != null)
+            {
+                paramList = _templateProvider.GetEnrollmentParameters();
+            }
+            else
+            {
+                var path = GetTemplateDirectory();
+                paramList = DigiCertSymClient.ExtractEnrollmentParamsFromJson(path);
+            }
 
             return paramList.ToDictionary(param => param.Key, param => new PropertyConfigInfo
             {
@@ -390,19 +503,55 @@ namespace Keyfactor.Extensions.CAPlugin.DigicertMpki
             });
         }
 
-        private string GetExecutingPath()
+        /// <summary>
+        /// Gets the template directory path from configuration or defaults to the executing assembly directory.
+        /// Supports both absolute paths (for container volume mounts) and relative paths.
+        /// </summary>
+        private string GetTemplateDirectory()
+        {
+            // Use configured template directory if provided
+            if (!string.IsNullOrEmpty(_config?.TemplateDirectory))
+            {
+                string templateDir = _config.TemplateDirectory;
+
+                // Convert relative path to absolute if needed
+                if (!Path.IsPathRooted(templateDir))
+                {
+                    string basePath = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
+                    templateDir = Path.Combine(basePath, templateDir);
+                }
+
+                // Ensure path ends with directory separator for consistency
+                return templateDir.TrimEnd(Path.DirectorySeparatorChar, '/') + Path.DirectorySeparatorChar;
+            }
+
+            // Fall back to executing assembly directory (backward compatible)
+            return GetExecutingAssemblyDirectory();
+        }
+
+        /// <summary>
+        /// Gets the directory containing the executing assembly.
+        /// Uses cross-platform path separator.
+        /// </summary>
+        private string GetExecutingAssemblyDirectory()
         {
             string codeBase = Assembly.GetExecutingAssembly().Location;
-            UriBuilder uri = new UriBuilder(codeBase);
-            string path = Uri.UnescapeDataString(uri.Path);
-            return Path.GetDirectoryName(path) + "\\";
+            string directory = Path.GetDirectoryName(codeBase);
+            return directory + Path.DirectorySeparatorChar;
         }
 
         public List<string> GetProductIds() => GetProductList().Values.ToList();
 
         private Dictionary<string, string> GetProductList()
         {
-            string path = GetExecutingPath();
+            // Use template provider if available
+            if (_templateProvider != null)
+            {
+                return _templateProvider.GetProfileIds();
+            }
+
+            // Fall back to file-based loading for backward compatibility
+            string path = GetTemplateDirectory();
             return DigiCertSymClient.ExtractProfileIdsFromJson(path);
         }
     }

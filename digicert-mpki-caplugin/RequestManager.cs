@@ -48,13 +48,59 @@ namespace Keyfactor.AnyGateway.DigicertMpki
         public int OuStartPoint { get; set; }
         private readonly ILogger _logger;
         private readonly DigicertMpkiConfig _config;
+        private readonly TemplateProvider _templateProvider;
         public static Func<string, string> Pemify = ss =>
             ss.Length <= 64 ? ss : ss.Substring(0, 64) + "\n" + Pemify(ss.Substring(64));
 
-        public RequestManager(ILogger logger, DigicertMpkiConfig config)
-        { 
-            _logger = logger; 
+        public RequestManager(ILogger logger, DigicertMpkiConfig config, TemplateProvider templateProvider = null)
+        {
+            _logger = logger;
             _config = config;
+            _templateProvider = templateProvider;
+        }
+
+        /// <summary>
+        /// Gets the template JSON for a given product ID.
+        /// Uses TemplateProvider if available, otherwise falls back to file-based loading.
+        /// </summary>
+        private string GetTemplateJson(string productId, Dictionary<string, string> productList)
+        {
+            // Use template provider if available (supports JSON config and file-based)
+            if (_templateProvider != null)
+            {
+                return _templateProvider.GetTemplateByProfileId(productId);
+            }
+
+            // Fall back to file-based loading for backward compatibility
+            var path = GetTemplateDirectory();
+            string templateFileName = GetFileNameByProductId(productList, productId);
+            return File.ReadAllText(Path.Combine(path, templateFileName));
+        }
+
+        /// <summary>
+        /// Gets the template directory path from configuration or defaults to the executing assembly directory.
+        /// Supports both absolute paths (for container volume mounts) and relative paths.
+        /// </summary>
+        public string GetTemplateDirectory()
+        {
+            // Use configured template directory if provided
+            if (!string.IsNullOrEmpty(_config?.TemplateDirectory))
+            {
+                string templateDir = _config.TemplateDirectory;
+
+                // Convert relative path to absolute if needed
+                if (!Path.IsPathRooted(templateDir))
+                {
+                    string basePath = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
+                    templateDir = Path.Combine(basePath, templateDir);
+                }
+
+                // Ensure path ends with directory separator for consistency
+                return templateDir.TrimEnd(Path.DirectorySeparatorChar, '/') + Path.DirectorySeparatorChar;
+            }
+
+            // Fall back to executing assembly directory (backward compatible)
+            return GetExecutingPath();
         }
 
 
@@ -294,15 +340,10 @@ namespace Keyfactor.AnyGateway.DigicertMpki
                 }
                 _logger.LogTrace($"Parsed CSR Subject Value Is: {csrParsed?.Subject.ToString().Split(',')}");
 
-                _logger.LogTrace("Getting File Execution Location to retrieve path");
-                var path = GetExecutingPath();
-                _logger.LogTrace($"Executing path for the file is: {path}");
-
-                _logger.LogTrace($"Reading in JSON template to parse file {productInfo.ProductID}");
-                string templateFileName = GetFileNameByProductId(productList, productInfo.ProductID);
-                string jsonTemplate = File.ReadAllText(Path.Combine(GetExecutingPath(), templateFileName));
+                _logger.LogTrace($"Loading template for product ID: {productInfo.ProductID}");
+                string jsonTemplate = GetTemplateJson(productInfo.ProductID, productList);
                 var jsonResult = jsonTemplate.ToString();
-                _logger.LogTrace($"Read in JSON, resulting template: {jsonResult}");
+                _logger.LogTrace($"Loaded template JSON: {jsonResult}");
 
                 //1. Loop through list of Product Parameters and replace in JSON
                 foreach (var productParam in productInfo.ProductParameters)
@@ -485,11 +526,15 @@ namespace Keyfactor.AnyGateway.DigicertMpki
             throw new KeyNotFoundException("Product ID not found in file dictionary.");
         }
 
+        /// <summary>
+        /// Gets the directory containing the executing assembly.
+        /// Uses cross-platform path separator.
+        /// </summary>
         private static string GetExecutingPath()
         {
             string codeBase = Assembly.GetExecutingAssembly().Location;
-            UriBuilder uri = new UriBuilder(codeBase);
-            return Path.GetDirectoryName(Uri.UnescapeDataString(uri.Path)) + "\\";
+            string directory = Path.GetDirectoryName(codeBase);
+            return directory + Path.DirectorySeparatorChar;
         }
 
         public EnrollmentResult

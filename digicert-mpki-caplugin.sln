@@ -5,6 +5,8 @@ VisualStudioVersion = 17.11.35312.102
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "digicert-mpki-caplugin", "digicert-mpki-caplugin\digicert-mpki-caplugin.csproj", "{9D2D6ED9-4626-430C-879D-0FE0FEBED146}"
 EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "digicert-mpki-caplugin.Tests", "digicert-mpki-caplugin.Tests\digicert-mpki-caplugin.Tests.csproj", "{A1B2C3D4-E5F6-7890-ABCD-EF1234567890}"
+EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{431498A1-F30A-4307-9FBF-B1D634326444}"
 	ProjectSection(SolutionItems) = preProject
 		CHANGELOG.md = CHANGELOG.md
@@ -22,6 +24,10 @@ Global
 		{9D2D6ED9-4626-430C-879D-0FE0FEBED146}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{9D2D6ED9-4626-430C-879D-0FE0FEBED146}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{9D2D6ED9-4626-430C-879D-0FE0FEBED146}.Release|Any CPU.Build.0 = Release|Any CPU
+		{A1B2C3D4-E5F6-7890-ABCD-EF1234567890}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{A1B2C3D4-E5F6-7890-ABCD-EF1234567890}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{A1B2C3D4-E5F6-7890-ABCD-EF1234567890}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{A1B2C3D4-E5F6-7890-ABCD-EF1234567890}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
